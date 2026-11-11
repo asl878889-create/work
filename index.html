@@ -190,9 +190,6 @@ const ensure = obj => {
   FIXED.forEach((id, i) => {
     const c = obj[id] || (obj[id] = {name: id, order: i, students: [], subjects: []});
     c.subjects = SUBJ.map(n => c.subjects.find(x => x.id === n) || {id: n, name: n, hw: []});
-    c.subjects.forEach(x => {          // 每科預設一份「評量」；seeded 記住已放過，刪掉後不會再跑出來
-      if (!x.seeded){ x.seeded = true; if (!x.hw.some(h => h.id === 'eval')) x.hw.unshift({id: 'eval', title: '評量', due: '', rec: {}}); }
-    });
   });
   return obj;
 };
