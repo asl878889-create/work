@@ -150,7 +150,7 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
       </div>
       <label class="both"><input type="checkbox" id="hwBoth"><span id="hwBothLbl"></span></label>
     </div>
-    <div class="panel">
+    <div class="panel" id="markCard">
       <div class="cls" id="subjSel3" role="group" aria-label="科目"></div>
       <div id="markPanel"></div>
     </div>
@@ -313,7 +313,7 @@ function showTab(name){
   TABS.forEach(id => $(id).hidden = id !== name);
   store.set('hw-tab2', name);
 }
-tabs.forEach(t => t.onclick = () => showTab(t.dataset.tab));
+tabs.forEach(t => t.onclick = () => { showTab(t.dataset.tab); scrollTo(0, 0); });
 
 const PALS = [['berry','草莓牛奶','#FFEFF4','#E8528A'],['peach','蜜桃奶油','#FFF4EA','#E9683F'],['mint','薄荷蘇打','#EAF8F4','#14937D'],['lav','薰衣草','#F3EEFF','#8A63E6'],['night','夜晚','#0B0B0D','#FF8FC0']];
 function setPal(id){
@@ -358,9 +358,22 @@ $('dlgDel').onclick = () => {
 
 /* ---------- 畫面 ---------- */
 const hint = text => el('p', {className: 'note', textContent: text});
-const jump = (text, tab) => { const b = el('button', {className: 'btn', textContent: text}); b.onclick = () => { $('missDlg').close(); showTab(tab); }; return b; };
+const jump = (text, tab) => { const b = el('button', {className: 'btn', textContent: text}); b.onclick = () => { $('missDlg').close(); showTab(tab); scrollTo(0, 0); }; return b; };
 
+/* 重畫時保留捲動位置和焦點，避免畫面被帶著跳 */
 function render(){
+  const y = scrollY, f = document.activeElement && document.activeElement.id;
+  draw();
+  if (scrollY !== y) scrollTo(0, y);
+  if (f){ const e = document.getElementById(f); if (e && e !== document.activeElement) e.focus({preventScroll: true}); }
+}
+/* 從總覽或缺交清單跳到登記：直接把作業卡片捲到固定列下面 */
+function jumpMark(){
+  showTab('mark');
+  const bar = document.querySelector('.bar'), card = $('markCard');
+  scrollTo(0, Math.max(0, card.getBoundingClientRect().top + scrollY - bar.offsetHeight - 8));
+}
+function draw(){
   if (mode === 'loading') return;
   const ids = clsIds();
   if (!C()) cur.c = ids[0] || null;
@@ -464,7 +477,7 @@ function render(){
       r.list.forEach(({x, y, over}) => {
         const b = el('button', {className: 'mchip' + (over ? ' over' : '')}, `${x.name}・${y.title}`);
         if (y.due) b.append(' ', el('small', {textContent: fmtDue(y.due)}));
-        b.onclick = () => { cur.s = x.id; cur.h = y.id; $('missDlg').close(); render(); showTab('mark'); };
+        b.onclick = () => { cur.s = x.id; cur.h = y.id; $('missDlg').close(); render(); jumpMark(); };
         chips.append(b);
       });
       box.append(el('div', {className: 'mrow'},
@@ -483,7 +496,7 @@ function render(){
     const head = el('tr', {}, el('th', {className: 'stu', textContent: '學生'}), el('th', {textContent: '缺交'}));
     sv.hw.forEach(x => {
       const b = el('button', {className: 'hwh'}, x.title, el('small', {textContent: fmtDue(x.due) || '—'}));
-      b.onclick = () => { cur.s = sv.id; cur.h = x.id; render(); showTab('mark'); };
+      b.onclick = () => { cur.s = sv.id; cur.h = x.id; render(); jumpMark(); };
       head.append(el('th', {}, b));
     });
     const body = el('tbody');
