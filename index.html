@@ -366,7 +366,8 @@ function render(){
   if (!C()) cur.c = ids[0] || null;
   const c = C();
   if (c && !S()) cur.s = c.subjects[0] ? c.subjects[0].id : null;
-  if (c && !c.subjects.some(x => x.id === cur.v)) cur.v = cur.s;      // v：總覽頁自己選的科目，和登記頁分開
+  if (c && !c.subjects.some(x => x.id === cur.v)) cur.v = cur.s;      // v：總覽頁自己選的科目
+  if (c && !c.subjects.some(x => x.id === cur.a)) cur.a = cur.s;      // a：出新作業要加到哪一科（和下面列表的科目 s 分開）
   const s = S();
   if (s && !H()) cur.h = s.hw.length ? s.hw[s.hw.length - 1].id : null;
   const h = s ? H() : null;
@@ -374,11 +375,11 @@ function render(){
 
   $('classSel').replaceChildren(...ids.map(id => {
     const b = el('button', {textContent: id}); b.setAttribute('aria-pressed', id === cur.c);
-    b.onclick = () => { cur = {c: id, s: null, v: cur.v, h: null}; render(); };
+    b.onclick = () => { cur = {c: id, s: null, v: cur.v, a: cur.a, h: null}; render(); };
     return b;
   }));
   ['subjSel', 'subjSel2', 'subjSel3'].forEach(id => $(id).replaceChildren(...(c ? c.subjects : []).map(x => {
-    const k = id === 'subjSel2' ? 'v' : 's';
+    const k = id === 'subjSel' ? 'a' : id === 'subjSel2' ? 'v' : 's';
     const b = el('button', {textContent: x.name}); b.setAttribute('aria-pressed', x.id === cur[k]);
     b.onclick = () => { cur[k] = x.id; if (k === 's') cur.h = null; render(); };
     return b;
@@ -527,14 +528,15 @@ $('stuAdd').onclick = () => {
   $('stuList').value = ''; touch(cur.c);
 };
 $('hwAdd').onclick = () => {
-  const s = S(), title = need($('hwTitle')); if (!s || !title) return;
+  const c = C(), s = c && c.subjects.find(x => x.id === cur.a), title = need($('hwTitle')); if (!s || !title) return;
   const due = mdValue($('hwM'), $('hwD'));
   const h = {id: 'h' + uid(), title, due, rec: {}}; s.hw.push(h);
   if ($('hwBoth').checked){            // 同一科也加到另一班
     const oid = FIXED.find(id => id !== cur.c), os = classes[oid] && classes[oid].subjects.find(x => x.id === s.id);
     if (os){ os.hw.push({id: 'h' + uid(), title, due, rec: {}}); touch(oid); }
   }
-  cur.h = h.id; $('hwTitle').value = ''; dueToday(); touch(cur.c);
+  if (cur.s === s.id) cur.h = h.id;     // 只有列表正在看同一科時才跳到新作業
+  $('hwTitle').value = ''; dueToday(); touch(cur.c);
 };
 [['hwTitle','hwAdd']].forEach(([i, b]) => $(i).addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) $(b).click(); }));
 
