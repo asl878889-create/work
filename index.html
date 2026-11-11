@@ -123,8 +123,10 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
         <input id="hwTitle" class="f grow" type="text" placeholder="作業名稱，例如：習作第 3 課" aria-label="作業名稱">
       </div>
       <div class="row">
-        <label for="hwDue" class="note">繳交期限</label>
-        <input id="hwDue" class="f grow" type="date">
+        <span class="note">繳交期限</span>
+        <select id="hwM" class="f" aria-label="期限的月份"></select>
+        <select id="hwD" class="f" aria-label="期限的日期"></select>
+        <span class="grow"></span>
         <button class="btn primary" id="hwAdd">加入</button>
       </div>
     </div>
@@ -189,6 +191,9 @@ const ensure = obj => {
   FIXED.forEach((id, i) => {
     const c = obj[id] || (obj[id] = {name: id, order: i, students: [], subjects: []});
     c.subjects = SUBJ.map(n => c.subjects.find(x => x.id === n) || {id: n, name: n, hw: []});
+    c.subjects.forEach(x => {          // 每科預設一份「評量」；seeded 記住已放過，刪掉後不會再跑出來
+      if (!x.seeded){ x.seeded = true; if (!x.hw.some(h => h.id === 'eval')) x.hw.unshift({id: 'eval', title: '評量', due: '', rec: {}}); }
+    });
   });
   return obj;
 };
@@ -196,7 +201,21 @@ const C = () => classes[cur.c] || null;
 const S = () => { const c = C(); return c ? c.subjects.find(s => s.id === cur.s) || null : null; };
 const H = () => { const s = S(); return s ? s.hw.find(h => h.id === cur.h) || null : null; };
 const students = c => [...c.students].sort((a, b) => a.seat - b.seat || a.name.localeCompare(b.name));
-const fmtDue = d => d ? d.slice(5).replace('-', '/') : '';
+const fmtDue = d => d ? Number(d.slice(5, 7)) + '/' + Number(d.slice(8, 10)) : '';
+/* 期限只選月和日；年份自動取離今天最近的那一年，用來判斷過期了沒 */
+function fillMD(m, d, value){
+  m.replaceChildren(el('option', {value: '', textContent: '月'}), ...Array.from({length: 12}, (_, i) => el('option', {value: i + 1, textContent: (i + 1) + ' 月'})));
+  d.replaceChildren(el('option', {value: '', textContent: '日'}), ...Array.from({length: 31}, (_, i) => el('option', {value: i + 1, textContent: (i + 1) + ' 日'})));
+  if (value){ m.value = Number(value.slice(5, 7)); d.value = Number(value.slice(8, 10)); }
+}
+function mdValue(m, d){
+  if (!m.value || !d.value) return '';
+  const now = new Date(), mo = Number(m.value), day = Math.min(Number(d.value), new Date(2024, mo, 0).getDate());
+  let y = now.getFullYear();
+  const diff = (new Date(y, mo - 1, day) - now) / 864e5;
+  if (diff > 183) y--; else if (diff < -183) y++;
+  return y + '-' + String(mo).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+}
 
 /* ---------- 儲存 ---------- */
 function setSync(text, warn){
@@ -240,11 +259,12 @@ async function boot(){
     clearTimeout(giveUp);
     if (mode === 'local') return;
     const next = {};
-    snap.docs.forEach(d => { const v = d.data(); if (v) next[d.id] = norm(v); });
+    snap.docs.forEach(d => { const v = d.data(); if (v) next[d.id] = norm(JSON.parse(JSON.stringify(v))); });   // 複製一份，雲端給的資料不能直接改
     [...dirty, ...busy, ...failed].forEach(id => { if (classes[id]) next[id] = classes[id]; else delete next[id]; });
     ensure(next);
     const first = mode !== 'cloud', same = JSON.stringify(next) === JSON.stringify(classes);
-    classes = next; mode = 'cloud';
+    if (first || !same) classes = next;
+    mode = 'cloud';
     if (first) setSync('已連上雲端，換手機或電腦開啟都看得到。');
     if (first || !same) render();
   }, () => { clearTimeout(giveUp); useLocal('只有這個頁面的擁有者可以讀寫雲端記錄。'); });
@@ -288,11 +308,16 @@ let dlgSave = null, dlgDelete = null, delArmed = false;
 function openEdit({title, fields, note, onSave, onDelete}){
   $('dlgTitle').textContent = title;
   $('dlgFields').replaceChildren(...fields.map(f => {
+    if (f.type === 'md'){
+      const m = el('select', {className: 'f', id: 'dlg-' + f.key + '-m'}), d = el('select', {className: 'f', id: 'dlg-' + f.key + '-d'});
+      m.setAttribute('aria-label', '月份'); d.setAttribute('aria-label', '日期'); fillMD(m, d, f.value);
+      return el('div', {className: 'note'}, f.label, el('div', {className: 'row'}, m, d));
+    }
     const i = el('input', {className: 'f', type: f.type || 'text', id: 'dlg-' + f.key, value: f.value ?? '', required: f.required !== false});
     return el('label', {}, f.label, i);
   }));
   $('dlgNote').textContent = ''; delArmed = false; $('dlgDel').textContent = '刪除';
-  dlgSave = () => onSave(Object.fromEntries(fields.map(f => [f.key, $('dlg-' + f.key).value.trim()])));
+  dlgSave = () => onSave(Object.fromEntries(fields.map(f => [f.key, f.type === 'md' ? mdValue($('dlg-' + f.key + '-m'), $('dlg-' + f.key + '-d')) : $('dlg-' + f.key).value.trim()])));
   dlgDelete = onDelete; $('dlgDel').dataset.note = note;
   $('dlg').showModal();
 }
@@ -344,7 +369,7 @@ function render(){
     const edit = el('button', {className: 'btn', textContent: '編輯'});
     edit.onclick = () => openEdit({
       title: '編輯作業',
-      fields: [{key: 'title', label: '作業名稱', value: h.title}, {key: 'due', label: '繳交期限（可不填）', type: 'date', value: h.due, required: false}],
+      fields: [{key: 'title', label: '作業名稱', value: h.title}, {key: 'due', label: '繳交期限（可不填）', type: 'md', value: h.due}],
       note: `會刪除「${h.title}」和全班這份作業的繳交記錄。`,
       onSave: v => { h.title = v.title; h.due = v.due; touch(cur.c); },
       onDelete: () => { s.hw = s.hw.filter(x => x !== h); cur.h = null; touch(cur.c); }
@@ -352,7 +377,7 @@ function render(){
     const n = {o: 0, l: 0, m: 0, n: 0};
     list.forEach(st => n[h.rec[st.id] || 'n']++);
     const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-    const dueText = !h.due ? '沒有設定期限' : '期限 ' + h.due.replace(/-/g, '/') + (h.due < today ? '（已過）' : h.due === today ? '（今天）' : '');
+    const dueText = !h.due ? '沒有設定期限' : '期限 ' + fmtDue(h.due) + (h.due < today ? '（已過）' : h.due === today ? '（今天）' : '');
     mp.append(el('div', {className: 'row'}, sel, edit),
       el('div', {className: 'due', textContent: dueText}),
       el('div', {className: 'chips'}, ...ST.map(([k, label]) => el('span', {className: 'chip s-' + k, textContent: `${label} ${n[k]}`}))));
@@ -432,11 +457,12 @@ $('stuAdd').onclick = () => {
 };
 $('hwAdd').onclick = () => {
   const s = S(), title = need($('hwTitle')); if (!s || !title) return;
-  const h = {id: 'h' + uid(), title, due: $('hwDue').value, rec: {}}; s.hw.push(h);
-  cur.h = h.id; $('hwTitle').value = ''; touch(cur.c);
+  const h = {id: 'h' + uid(), title, due: mdValue($('hwM'), $('hwD')), rec: {}}; s.hw.push(h);
+  cur.h = h.id; $('hwTitle').value = ''; $('hwM').value = ''; $('hwD').value = ''; touch(cur.c);
 };
 [['hwTitle','hwAdd']].forEach(([i, b]) => $(i).addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) $(b).click(); }));
 
+fillMD($('hwM'), $('hwD'), '');
 setPal(store.get('hw-pal', null));
 showTab(store.get('hw-tab', 'mark'));
 boot();
