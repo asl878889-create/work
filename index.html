@@ -81,6 +81,12 @@ section{display:flex;flex-direction:column;gap:14px}
 .s-m,.seg button[data-s="m"][aria-pressed="true"]{background:var(--mk-bg);color:var(--mk-fg);border-color:transparent}
 .s-n,.seg button[data-s="n"][aria-pressed="true"]{background:var(--no-bg);color:var(--no-fg);border-color:transparent}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
+.mgrp{display:flex;flex-direction:column;gap:6px}
+.mrow2{display:flex;flex-wrap:wrap;gap:0 8px;align-items:baseline;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:16px;padding:6px 12px;text-align:left;width:100%;font-size:15px}
+.mrow2.over{background:var(--no-bg);color:var(--no-fg);border-color:transparent}
+.mrow2 .mt{font-weight:700}
+.mrow2 .mn{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:700}
+.mrow2 .ms{flex-basis:100%;font-size:13px;opacity:.85;overflow-wrap:anywhere}
 .mrow{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-bottom:1px solid var(--line)}
 .mrow:last-child{border-bottom:0}
 .mhead{display:flex;gap:8px;align-items:baseline}
@@ -108,7 +114,7 @@ dialog{border:1px solid var(--line);border-radius:22px;background:var(--surface)
   border:0;border-radius:999px;background:var(--accent);color:var(--accent-fg);font-weight:700;font-size:17px;padding:14px 26px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
 #missDlg{width:min(560px,calc(100vw - 24px));max-height:85vh;overflow:auto;padding:18px 16px}
 #missDlg[open]{display:flex;flex-direction:column;gap:12px}
-#missPanel,#markPanel{display:flex;flex-direction:column;gap:12px}
+#missPanel,#markPanel{display:flex;flex-direction:column;gap:14px}
 .both{display:flex;gap:10px;align-items:center;font-size:16px}
 .both input{width:22px;height:22px;accent-color:var(--jade);flex:none}
 dialog::backdrop{background:rgba(0,0,0,.45)}
@@ -450,43 +456,34 @@ function draw(){
     }
   }
 
-  /* 缺交：這一班四個科目合在一起看 */
+  /* 缺交：兩個班級、四個科目合在一起看，一份作業一列 */
   const qp = $('missPanel'); qp.replaceChildren();
   const now = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-  const hwTotal = c.subjects.reduce((n, x) => n + x.hw.length, 0);
-  if (!c.students.length) qp.append(el('h2', {textContent: c.name + ' 還沒有學生'}), el('div', {className: 'row'}, jump('去加入學生', 'roster')));
-  else if (!hwTotal) qp.append(el('h2', {textContent: c.name + ' 還沒有作業'}), el('div', {className: 'row'}, jump('去出作業', 'mark')));
-  else {
-    const rows = students(c).map(st => {
-      const list = [];
-      c.subjects.forEach(x => x.hw.forEach(y => { if (!y.rec[st.id]) list.push({x, y, over: !!y.due && y.due < now}); }));
-      list.sort((a, b) => (b.over - a.over) || (a.y.due || '9').localeCompare(b.y.due || '9'));
-      return {st, list, over: list.filter(i => i.over).length};
+  FIXED.forEach(cid => {
+    const k = classes[cid]; if (!k) return;
+    const rows = [];
+    k.subjects.forEach(x => x.hw.forEach(y => {
+      const names = students(k).filter(st => !y.rec[st.id]).map(st => st.name);
+      if (names.length) rows.push({x, y, names, over: !!y.due && y.due < now});
+    }));
+    rows.sort((p, q) => (q.over - p.over) || (p.y.due || '9').localeCompare(q.y.due || '9'));
+    const total = rows.reduce((n, r) => n + r.names.length, 0), overdue = rows.reduce((n, r) => n + (r.over ? r.names.length : 0), 0);
+    const head = el('div', {className: 'mhead'}, el('b', {textContent: cid}));
+    if (overdue) head.append(el('span', {className: 'chip s-n', textContent: `過期 ${overdue}`}));
+    if (total) head.append(el('span', {className: 'chip', style: 'border:1px solid var(--line)', textContent: `未交 ${total}`}));
+    const grp = el('div', {className: 'mgrp'}, head);
+    if (!rows.length) grp.append(el('p', {className: 'note', textContent: k.students.length ? '沒有未交的作業' : '還沒有學生'}));
+    rows.forEach(r => {
+      const b = el('button', {className: 'mrow2' + (r.over ? ' over' : '')},
+        el('span', {className: 'mt', textContent: `${r.x.name}・${r.y.title}`}),
+        el('small', {textContent: fmtDue(r.y.due)}),
+        el('span', {className: 'mn', textContent: `${r.names.length} 人`}),
+        el('span', {className: 'ms', textContent: r.names.join('、')}));
+      b.onclick = () => { cur.c = cid; cur.s = r.x.id; cur.h = r.y.id; $('missDlg').close(); render(); jumpMark(); };
+      grp.append(b);
     });
-    const lacking = rows.filter(r => r.list.length).sort((a, b) => (b.over - a.over) || (b.list.length - a.list.length));
-    const done = rows.filter(r => !r.list.length);
-    const total = lacking.reduce((n, r) => n + r.list.length, 0), overdue = lacking.reduce((n, r) => n + r.over, 0);
-    qp.append(el('h2', {textContent: `${c.name} 全部科目`}),
-      el('div', {className: 'chips'},
-        el('span', {className: 'chip s-n', textContent: `過期未交 ${overdue} 份`}),
-        el('span', {className: 'chip', style: 'border:1px solid var(--line)', textContent: `還沒交 ${total} 份`}),
-        el('span', {className: 'chip s-o', textContent: `交齊 ${done.length} 位`})));
-    const box = el('div');
-    lacking.forEach(r => {
-      const chips = el('div', {className: 'chips'});
-      r.list.forEach(({x, y, over}) => {
-        const b = el('button', {className: 'mchip' + (over ? ' over' : '')}, `${x.name}・${y.title}`);
-        if (y.due) b.append(' ', el('small', {textContent: fmtDue(y.due)}));
-        b.onclick = () => { cur.s = x.id; cur.h = y.id; $('missDlg').close(); render(); jumpMark(); };
-        chips.append(b);
-      });
-      box.append(el('div', {className: 'mrow'},
-        el('div', {className: 'mhead'}, el('b', {textContent: r.st.name}), el('span', {className: 'mcount', textContent: r.over ? `過期 ${r.over} 份` : ''}), el('span', {className: 'note', textContent: `${r.list.length} 份`})),
-        chips));
-    });
-    qp.append(box);
-    if (done.length) qp.append(el('div', {className: 'okline', textContent: '全部交齊：' + done.map(r => r.st.name).join('、')}));
-  }
+    qp.append(grp);
+  });
 
   /* 總覽 */
   const sv = c ? c.subjects.find(x => x.id === cur.v) : null;
