@@ -154,6 +154,7 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
   </section>
 
   <section id="all" hidden>
+    <div class="cls" id="subjSel2" role="group" aria-label="科目"></div>
     <div class="chips">
       <span class="chip s-o">準</span><span class="chip s-l">遲</span><span class="chip s-m">補</span><span class="chip s-n">缺</span>
     </div>
@@ -372,11 +373,11 @@ function render(){
     b.onclick = () => { cur = {c: id, s: null, h: null}; render(); };
     return b;
   }));
-  $('subjSel').replaceChildren(...(c ? c.subjects : []).map(x => {
+  ['subjSel', 'subjSel2'].forEach(id => $(id).replaceChildren(...(c ? c.subjects : []).map(x => {
     const b = el('button', {textContent: x.name}); b.setAttribute('aria-pressed', x.id === cur.s);
     b.onclick = () => { cur.s = x.id; cur.h = null; render(); };
     return b;
-  }));
+  })));
 
   /* 登記 */
   $('hwAddPanel').hidden = !s;
