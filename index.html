@@ -108,7 +108,7 @@ dialog{border:1px solid var(--line);border-radius:22px;background:var(--surface)
   border:0;border-radius:999px;background:var(--accent);color:var(--accent-fg);font-weight:700;font-size:17px;padding:14px 26px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
 #missDlg{width:min(560px,calc(100vw - 24px));max-height:85vh;overflow:auto;padding:18px 16px}
 #missDlg[open]{display:flex;flex-direction:column;gap:12px}
-#missPanel{display:flex;flex-direction:column;gap:12px}
+#missPanel,#markPanel{display:flex;flex-direction:column;gap:12px}
 .both{display:flex;gap:10px;align-items:center;font-size:16px}
 .both input{width:22px;height:22px;accent-color:var(--jade);flex:none}
 dialog::backdrop{background:rgba(0,0,0,.45)}
@@ -150,8 +150,10 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
       </div>
       <label class="both"><input type="checkbox" id="hwBoth"><span id="hwBothLbl"></span></label>
     </div>
-    <div class="cls" id="subjSel3" role="group" aria-label="科目"></div>
-    <div class="panel" id="markPanel"></div>
+    <div class="panel">
+      <div class="cls" id="subjSel3" role="group" aria-label="科目"></div>
+      <div id="markPanel"></div>
+    </div>
   </section>
 
   <section id="all" hidden>
