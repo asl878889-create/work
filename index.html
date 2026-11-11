@@ -1,415 +1,494 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>作業繳交記錄</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap">
 <style>
-  :root {
-    --bg: #f5f6f8; --panel: #ffffff; --text: #1f2430; --muted: #6b7280;
-    --line: #dfe3ea; --accent: #2f5fd0; --accent-text: #ffffff;
-    --none-bg: #fde8e8; --none-fg: #a12222;
-    --ontime-bg: #dff3e4; --ontime-fg: #17663a;
-    --late-bg: #fdf0d2; --late-fg: #8a5a00;
-    --makeup-bg: #dfeafd; --makeup-fg: #1f4fa8;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #15181e; --panel: #1e222b; --text: #e7e9ee; --muted: #9aa1ae;
-      --line: #323845; --accent: #6f97f5; --accent-text: #10131a;
-      --none-bg: #4a2224; --none-fg: #ffb4b4;
-      --ontime-bg: #1d4029; --ontime-fg: #a5e6b8;
-      --late-bg: #4a3a12; --late-fg: #f5d58a;
-      --makeup-bg: #1f3358; --makeup-fg: #b3ccff;
-    }
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font: 16px/1.5 system-ui, -apple-system, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-  }
-  header { padding: 16px; max-width: 1200px; margin: 0 auto; }
-  h1 { margin: 0 0 12px; font-size: 1.4rem; }
-  .pickers { display: flex; flex-wrap: wrap; gap: 12px 24px; }
-  .picker { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-  .picker label { font-weight: 600; }
-  select, input, textarea, button { font: inherit; color: inherit; }
-  select, input, textarea {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px;
-  }
-  select { min-width: 8em; max-width: 14em; }
-  button {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
-    padding: 6px 12px; cursor: pointer;
-  }
-  button:hover { border-color: var(--accent); }
-  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-  button.danger { color: var(--none-fg); }
-  button.small { padding: 4px 8px; font-size: .85rem; }
-  main { padding: 0 16px 32px; max-width: 1200px; margin: 0 auto; }
-  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; align-items: center; }
-  .legend { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; font-size: .85rem; }
-  .chip { border-radius: 999px; padding: 2px 10px; font-weight: 600; white-space: nowrap; }
-  .s-none { background: var(--none-bg); color: var(--none-fg); }
-  .s-ontime { background: var(--ontime-bg); color: var(--ontime-fg); }
-  .s-late { background: var(--late-bg); color: var(--late-fg); }
-  .s-makeup { background: var(--makeup-bg); color: var(--makeup-fg); }
-  .table-wrap {
-    overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-    max-height: calc(100vh - 220px); min-height: 200px;
-  }
-  table { border-collapse: separate; border-spacing: 0; }
-  th, td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); padding: 6px 8px; }
-  thead th { position: sticky; top: 0; background: var(--panel); z-index: 2; vertical-align: bottom; }
-  th.name, td.name {
-    position: sticky; left: 0; background: var(--panel); z-index: 1;
-    text-align: left; white-space: nowrap; min-width: 7.5em;
-  }
-  thead th.name { z-index: 3; }
-  .hw-head, .stu-btn { border: none; background: none; padding: 2px 4px; text-align: inherit; width: 100%; }
-  .hw-head { min-width: 6em; max-width: 10em; }
-  .hw-title { font-weight: 700; display: block; word-break: break-word; }
-  .hw-meta { font-weight: 400; font-size: .8rem; color: var(--muted); display: block; }
-  .seat { color: var(--muted); margin-right: 6px; font-variant-numeric: tabular-nums; }
-  td.cell { text-align: center; padding: 4px; }
-  .status-btn { border: none; width: 100%; min-width: 4.2em; font-weight: 600; padding: 6px 4px; }
-  .empty { padding: 32px 16px; text-align: center; color: var(--muted); }
-  #menu {
-    position: absolute; display: none; flex-direction: column; gap: 4px; z-index: 10;
-    background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px;
-    box-shadow: 0 6px 20px rgba(0,0,0,.2);
-  }
-  #menu button { border: none; font-weight: 600; min-width: 6em; }
-  dialog {
-    border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--text);
-    padding: 20px; width: min(420px, calc(100vw - 32px));
-  }
-  dialog::backdrop { background: rgba(0,0,0,.4); }
-  dialog h2 { margin: 0 0 12px; font-size: 1.15rem; }
-  dialog label { display: block; font-weight: 600; margin-top: 10px; }
-  dialog input, dialog textarea { width: 100%; margin-top: 4px; }
-  dialog textarea { min-height: 10em; resize: vertical; }
-  .hint { color: var(--muted); font-size: .85rem; margin: 4px 0 0; }
-  .dialog-actions { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
-  .dialog-actions .spacer { flex: 1; }
-</style>
-</head>
-<body>
-<header>
-  <h1>作業繳交記錄</h1>
-  <div class="pickers">
-    <div class="picker">
-      <label for="classSel">班級</label>
-      <select id="classSel"></select>
-      <button class="small" id="addClass">＋新增</button>
-      <button class="small" id="editClass">編輯</button>
-    </div>
-    <div class="picker">
-      <label for="subjectSel">科目</label>
-      <select id="subjectSel"></select>
-      <button class="small" id="addSubject">＋新增</button>
-      <button class="small" id="editSubject">編輯</button>
-    </div>
-  </div>
-</header>
-<main>
-  <div class="toolbar">
-    <button class="primary" id="addHw">＋新增作業</button>
-    <button id="addStudents">＋新增學生</button>
-    <div class="legend">
-      <span class="chip s-ontime">準時</span>
-      <span class="chip s-late">遲交</span>
-      <span class="chip s-makeup">補交</span>
-      <span class="chip s-none">未交</span>
-    </div>
-  </div>
-  <div class="table-wrap" id="tableWrap"></div>
-  <p class="hint">點格子可切換繳交狀態；點作業名稱或學生姓名可編輯、刪除。資料儲存在這台裝置的瀏覽器中。</p>
-</main>
+/* 版面：單欄手機工具，上方選班級與科目，四個分頁一次只顯示一頁 */
+:root{
+  --bg:#FFEFF4; --surface:#FFFFFF; --fg:#4A2B3A; --muted:#8A6074;
+  --line:#F7D0DD; --accent:#E8528A; --accent-fg:#FFFFFF; --jade:#7C5CD0; --jade-soft:#F0E9FF;
+  --ok-bg:#DDF3E4; --ok-fg:#17603A; --late-bg:#FFEBC2; --late-fg:#7A4E00;
+  --mk-bg:#DCE9FF; --mk-fg:#1E4C9E; --no-bg:#FFDCDC; --no-fg:#9C1F1F;
+  --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#24161D; --surface:#33212A; --fg:#FFE9F0; --muted:#CDA7B7;
+  --line:#4D3341; --accent:#FF8DB4; --accent-fg:#3A0F20; --jade:#BBA4F7; --jade-soft:#3B2F54;
+  --ok-bg:#1C4630; --ok-fg:#AEEBC4; --late-bg:#4F3C0E; --late-fg:#FADB8C;
+  --mk-bg:#1E3660; --mk-fg:#B9D0FF; --no-bg:#5A2226; --no-fg:#FFB9B9; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#24161D; --surface:#33212A; --fg:#FFE9F0; --muted:#CDA7B7;
+  --line:#4D3341; --accent:#FF8DB4; --accent-fg:#3A0F20; --jade:#BBA4F7; --jade-soft:#3B2F54;
+  --ok-bg:#1C4630; --ok-fg:#AEEBC4; --late-bg:#4F3C0E; --late-fg:#FADB8C;
+  --mk-bg:#1E3660; --mk-fg:#B9D0FF; --no-bg:#5A2226; --no-fg:#FFB9B9; color-scheme:dark }
+/* 自選配色：選了之後不跟隨系統深淺色 */
+:root[data-pal="berry"],:root[data-pal="peach"],:root[data-pal="mint"],:root[data-pal="lav"]{
+  --ok-bg:#DDF3E4; --ok-fg:#17603A; --late-bg:#FFEBC2; --late-fg:#7A4E00;
+  --mk-bg:#DCE9FF; --mk-fg:#1E4C9E; --no-bg:#FFDCDC; --no-fg:#9C1F1F; color-scheme:light}
+:root[data-pal="berry"]{--bg:#FFEFF4;--surface:#FFFFFF;--fg:#4A2B3A;--muted:#8A6074;--line:#F7D0DD;--accent:#E8528A;--accent-fg:#FFFFFF;--jade:#7C5CD0;--jade-soft:#F0E9FF}
+:root[data-pal="peach"]{--bg:#FFF4EA;--surface:#FFFFFF;--fg:#5A3A2E;--muted:#94705F;--line:#F8DCC6;--accent:#E9683F;--accent-fg:#FFFFFF;--jade:#C2496B;--jade-soft:#FFE6D6}
+:root[data-pal="mint"]{--bg:#EAF8F4;--surface:#FFFFFF;--fg:#24443F;--muted:#5E817B;--line:#C9EAE1;--accent:#14937D;--accent-fg:#FFFFFF;--jade:#2F6FC4;--jade-soft:#E0EEFF}
+:root[data-pal="lav"]{--bg:#F3EEFF;--surface:#FFFFFF;--fg:#382B5C;--muted:#7566A0;--line:#DDD2F7;--accent:#8A63E6;--accent-fg:#FFFFFF;--jade:#C73F86;--jade-soft:#FFE6F3}
+:root[data-pal="night"]{--bg:#0B0B0D;--surface:#18171B;--fg:#FFFFFF;--muted:#BCA9B3;--line:#322B30;--accent:#FF8FC0;--accent-fg:#0B0B0D;--jade:#FFB3D4;--jade-soft:#2C1A24;
+  --ok-bg:#1C4630; --ok-fg:#AEEBC4; --late-bg:#4F3C0E; --late-fg:#FADB8C;
+  --mk-bg:#1E3660; --mk-fg:#B9D0FF; --no-bg:#5A2226; --no-fg:#FFB9B9; color-scheme:dark}
 
-<div id="menu"></div>
-<dialog id="dlg"><form method="dialog" id="dlgForm"></form></dialog>
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.6}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:600px;margin:0 auto;padding-block:20px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:16px}
+h1{font-size:24px;margin:0;line-height:1.2;text-wrap:balance}
+h2{font-size:15px;margin:0;color:var(--muted);font-weight:500}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.pals{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.pal{width:30px;height:30px;border-radius:50%;border:2px solid var(--line);padding:0;flex:none}
+.pal[aria-pressed="true"]{outline:3px solid var(--accent);outline-offset:2px}
+.note{font-size:13px;color:var(--muted);margin:0}
+.note.warn{color:var(--no-fg);background:var(--no-bg);border-radius:14px;padding:8px 12px}
+.pick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pick label{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px;min-width:0}
+.f{border:1px solid var(--line);border-radius:999px;padding:8px 14px;background:var(--surface);color:var(--fg);min-width:0;max-width:100%}
+textarea.f{border-radius:18px;width:100%;min-height:8em;resize:vertical}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;position:sticky;top:env(safe-area-inset-top,0px);
+  background:var(--bg);padding-block:8px;z-index:5}
+.tab{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 0;font-weight:500;font-size:15px;min-width:0;white-space:nowrap}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+section{display:flex;flex-direction:column;gap:14px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.grow{flex:1;min-width:0}
+.btn{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:8px 16px;font-weight:500;white-space:nowrap}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.danger{color:var(--no-fg)}
+.btn:disabled{opacity:.5;cursor:default}
+.x{border:0;background:none;color:var(--jade);padding:4px 6px;font-size:13px;font-weight:500;white-space:nowrap}
+.item{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.seat{color:var(--muted);font-variant-numeric:tabular-nums;min-width:1.6em;text-align:right;flex:none}
+.name{flex:1;min-width:0;overflow-wrap:anywhere}
+.cur{font-size:12px;background:var(--jade-soft);border-radius:999px;padding:1px 8px;margin-left:6px;white-space:nowrap}
+.seg{display:flex;gap:4px;flex:none}
+.seg button{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:5px 9px;font-size:13px;font-weight:500;white-space:nowrap}
+.s-o,.seg button[data-s="o"][aria-pressed="true"]{background:var(--ok-bg);color:var(--ok-fg);border-color:transparent}
+.s-l,.seg button[data-s="l"][aria-pressed="true"]{background:var(--late-bg);color:var(--late-fg);border-color:transparent}
+.s-m,.seg button[data-s="m"][aria-pressed="true"]{background:var(--mk-bg);color:var(--mk-fg);border-color:transparent}
+.s-n,.seg button[data-s="n"][aria-pressed="true"]{background:var(--no-bg);color:var(--no-fg);border-color:transparent}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border-radius:999px;padding:3px 12px;font-size:14px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
+.due{font-weight:500}
+.scroll{overflow-x:auto;margin-inline:-4px;padding-inline:4px}
+table{border-collapse:separate;border-spacing:0;font-size:14px}
+th,td{padding:6px 6px;border-bottom:1px solid var(--line);text-align:center;vertical-align:middle}
+tbody tr:last-child td,tbody tr:last-child th{border-bottom:0}
+thead th{font-weight:500;color:var(--muted);vertical-align:bottom}
+th.stu{position:sticky;left:0;background:var(--surface);text-align:left;white-space:nowrap;font-weight:500;z-index:1}
+.hwh{border:0;background:none;padding:0;font-weight:500;color:var(--jade);max-width:6em;min-width:3.2em;overflow-wrap:anywhere;line-height:1.3}
+.hwh small{display:block;color:var(--muted);font-weight:400}
+.cell{display:inline-block;min-width:2.2em;border-radius:999px;padding:1px 0;font-weight:500}
+.miss{font-variant-numeric:tabular-nums;font-weight:700}
+dialog{border:1px solid var(--line);border-radius:22px;background:var(--surface);color:var(--fg);padding:20px;width:min(400px,calc(100vw - 32px))}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog form{display:flex;flex-direction:column;gap:12px}
+dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+dialog h2{color:var(--fg);font-size:18px;font-weight:700}
+@media (max-width:420px){ .mark .item{flex-wrap:wrap} .mark .seg{width:100%;padding-left:calc(1.6em + 10px)} .mark .seg button{flex:1} }
+</style>
+
+<div class="wrap">
+  <h1>作業繳交記錄</h1>
+  <div class="pals" id="pals"><span class="note" id="palName"></span></div>
+  <p class="note" id="sync">讀取中…</p>
+
+  <div class="pick">
+    <label for="classSel">班級<select id="classSel" class="f"></select></label>
+    <label for="subjSel">科目<select id="subjSel" class="f"></select></label>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="mark" aria-selected="true">登記</button>
+    <button class="tab" role="tab" data-tab="all" aria-selected="false">總覽</button>
+    <button class="tab" role="tab" data-tab="roster" aria-selected="false">名單</button>
+    <button class="tab" role="tab" data-tab="setup" aria-selected="false">班級</button>
+  </div>
+
+  <section id="mark" class="mark">
+    <div class="panel" id="hwAddPanel">
+      <h2>出一份新作業</h2>
+      <div class="row">
+        <input id="hwTitle" class="f grow" type="text" placeholder="作業名稱，例如：習作第 3 課" aria-label="作業名稱">
+      </div>
+      <div class="row">
+        <label for="hwDue" class="note">繳交期限</label>
+        <input id="hwDue" class="f grow" type="date">
+        <button class="btn primary" id="hwAdd">加入</button>
+      </div>
+    </div>
+    <div class="panel" id="markPanel"></div>
+  </section>
+
+  <section id="all" hidden>
+    <div class="chips">
+      <span class="chip s-o">準 準時</span><span class="chip s-l">遲 遲交</span><span class="chip s-m">補 補交</span><span class="chip s-n">缺 未交</span>
+    </div>
+    <div class="panel" id="allPanel"></div>
+    <p class="note">點作業名稱可以跳到「登記」修改那一份作業。</p>
+  </section>
+
+  <section id="roster" hidden>
+    <div class="panel" id="stuAddPanel">
+      <h2 id="stuAddTitle">加入學生</h2>
+      <textarea id="stuList" class="f" placeholder="一行一位。&#10;可以寫「5 王小明」指定座號，&#10;只寫姓名會自動接著排座號。" aria-label="學生名單"></textarea>
+      <div class="row"><span class="grow"></span><button class="btn primary" id="stuAdd">加入名單</button></div>
+    </div>
+    <div class="panel" id="stuPanel"></div>
+  </section>
+
+  <section id="setup" hidden>
+    <div class="panel">
+      <h2>班級</h2>
+      <div class="row">
+        <input id="clsName" class="f grow" type="text" placeholder="班級名稱，例如：三年二班" aria-label="班級名稱">
+        <button class="btn primary" id="clsAdd">新增班級</button>
+      </div>
+      <div id="clsList"></div>
+    </div>
+    <div class="panel" id="subjPanel">
+      <h2 id="subjTitle">科目</h2>
+      <div class="row">
+        <input id="subjName" class="f grow" type="text" placeholder="科目名稱，例如：國語" aria-label="科目名稱">
+        <button class="btn primary" id="subjAdd">新增科目</button>
+      </div>
+      <div id="subjList"></div>
+    </div>
+  </section>
+</div>
+
+<dialog id="dlg">
+  <form id="dlgForm">
+    <h2 id="dlgTitle"></h2>
+    <div id="dlgFields" style="display:flex;flex-direction:column;gap:12px"></div>
+    <p class="note" id="dlgNote"></p>
+    <div class="row">
+      <button type="button" class="btn danger" id="dlgDel">刪除</button>
+      <span class="grow"></span>
+      <button type="button" class="btn" id="dlgCancel">取消</button>
+      <button type="submit" class="btn primary">儲存</button>
+    </div>
+  </form>
+</dialog>
 
 <script>
-const STORAGE_KEY = 'homework-tracker-v1';
-const STATUSES = [
-  { key: 'ontime', label: '準時' },
-  { key: 'late', label: '遲交' },
-  { key: 'makeup', label: '補交' },
-  { key: 'none', label: '未交' },
-];
-const LABEL = Object.fromEntries(STATUSES.map(s => [s.key, s.label]));
-
-// 資料結構：
-// classes: [{ id, name, students: [{id, seat, name}],
-//             subjects: [{ id, name, assignments: [{id, title, due, records: {studentId: status}}] }] }]
-let state = load();
-
-function load() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch (e) { console.warn('讀取資料失敗', e); }
-  return { classes: [], classId: null, subjectId: null };
-}
-function save() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-  catch (e) { alert('資料儲存失敗，請確認瀏覽器沒有停用網站儲存空間。'); }
-}
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const $ = id => document.getElementById(id);
-function el(tag, props = {}, ...children) {
-  const node = Object.assign(document.createElement(tag), props);
-  node.append(...children);
-  return node;
+const el = (tag, props, ...kids) => { const e = Object.assign(document.createElement(tag), props || {}); e.append(...kids); return e; };
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch(e){ return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+};
+const uid = () => Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3);
+
+/* 狀態代碼：o 準時、l 遲交、m 補交；沒有記錄就是未交（n） */
+const ST = [['o','準時','準'],['l','遲交','遲'],['m','補交','補'],['n','未交','缺']];
+
+/* 資料：每個班級是一筆 { name, order, students:[{id,seat,name}], subjects:[{id,name,hw:[{id,title,due,rec:{學生id:代碼}}]}] } */
+let classes = {};
+let mode = 'loading';              // loading | cloud | local
+let db = null;
+let cur = store.get('hw-cur', {c: null, s: null, h: null});
+const dirty = new Set(), busy = new Set(), failed = new Set(), timers = {};
+
+const clsIds = () => Object.keys(classes).sort((a, b) => (classes[a].order || 0) - (classes[b].order || 0));
+const C = () => classes[cur.c] || null;
+const S = () => { const c = C(); return c ? c.subjects.find(s => s.id === cur.s) || null : null; };
+const H = () => { const s = S(); return s ? s.hw.find(h => h.id === cur.h) || null : null; };
+const students = c => [...c.students].sort((a, b) => a.seat - b.seat || a.name.localeCompare(b.name));
+const fmtDue = d => d ? d.slice(5).replace('-', '/') : '';
+
+/* ---------- 儲存 ---------- */
+function setSync(text, warn){
+  const p = $('sync'); p.className = 'note' + (warn ? ' warn' : ''); p.replaceChildren(text);
+  if (warn && failed.size){
+    const b = el('button', {className: 'x', textContent: '再存一次'});
+    b.onclick = () => { [...failed].forEach(id => { failed.delete(id); dirty.add(id); flush(id); }); };
+    p.append(' ', b);
+  }
 }
-const curClass = () => state.classes.find(c => c.id === state.classId) || null;
-const curSubject = () => { const c = curClass(); return c ? c.subjects.find(s => s.id === state.subjectId) || null : null; };
-
-function commit() { save(); render(); }
-
-// ---------- 畫面 ----------
-function render() {
-  // 修正目前選取的班級／科目
-  if (!curClass()) state.classId = state.classes[0]?.id ?? null;
-  const cls = curClass();
-  if (cls && !curSubject()) state.subjectId = cls.subjects[0]?.id ?? null;
-  if (!cls) state.subjectId = null;
-  const sub = curSubject();
-
-  fillSelect($('classSel'), state.classes, state.classId, '（尚無班級）');
-  fillSelect($('subjectSel'), cls ? cls.subjects : [], state.subjectId, '（尚無科目）');
-  $('editClass').disabled = !cls;
-  $('addSubject').disabled = !cls;
-  $('editSubject').disabled = !sub;
-  $('addStudents').disabled = !cls;
-  $('addHw').disabled = !sub;
-
-  const wrap = $('tableWrap');
-  wrap.replaceChildren();
-  if (!cls) return wrap.append(el('div', { className: 'empty' }, '請先按「＋新增」建立一個班級。'));
-  if (!sub) return wrap.append(el('div', { className: 'empty' }, '請先為這個班級新增一個科目。'));
-  if (!cls.students.length && !sub.assignments.length)
-    return wrap.append(el('div', { className: 'empty' }, '請新增學生名單與作業。'));
-
-  const students = [...cls.students].sort((a, b) => a.seat - b.seat);
-  const table = el('table');
-  const headRow = el('tr', {}, el('th', { className: 'name' }, '學生'));
-  for (const hw of sub.assignments) {
-    const done = students.filter(s => (hw.records[s.id] || 'none') !== 'none').length;
-    const btn = el('button', { className: 'hw-head', title: '編輯作業' },
-      el('span', { className: 'hw-title' }, hw.title),
-      el('span', { className: 'hw-meta' }, hw.due ? '期限 ' + hw.due.slice(5).replace('-', '/') : '無期限'),
-      el('span', { className: 'hw-meta' }, `已交 ${done}/${students.length}`));
-    btn.onclick = () => editAssignment(hw);
-    headRow.append(el('th', {}, btn));
-  }
-  table.append(el('thead', {}, headRow));
-
-  const tbody = el('tbody');
-  for (const stu of students) {
-    const nameBtn = el('button', { className: 'stu-btn', title: '編輯學生' },
-      el('span', { className: 'seat' }, String(stu.seat)), stu.name);
-    nameBtn.onclick = () => editStudent(stu);
-    const row = el('tr', {}, el('td', { className: 'name' }, nameBtn));
-    for (const hw of sub.assignments) {
-      const status = hw.records[stu.id] || 'none';
-      const btn = el('button', { className: 'status-btn s-' + status }, LABEL[status]);
-      btn.onclick = e => { e.stopPropagation(); openMenu(btn, hw, stu); };
-      row.append(el('td', { className: 'cell' }, btn));
-    }
-    tbody.append(row);
-  }
-  table.append(tbody);
-  wrap.append(table);
+function touch(id){                 // 某個班級的資料改了
+  render();
+  if (mode === 'local'){ store.set('hw-local', classes); return; }
+  if (mode !== 'cloud') return;
+  dirty.add(id); failed.delete(id);
+  clearTimeout(timers[id]); timers[id] = setTimeout(() => flush(id), 500);
+  setSync('儲存中…');
 }
-
-function fillSelect(sel, items, selectedId, emptyText) {
-  sel.replaceChildren();
-  if (!items.length) sel.append(el('option', { value: '' }, emptyText));
-  for (const it of items) sel.append(el('option', { value: it.id, selected: it.id === selectedId }, it.name));
-  sel.disabled = !items.length;
+async function flush(id){
+  if (busy.has(id) || !dirty.has(id)) return;
+  dirty.delete(id); busy.add(id);
+  try {
+    const ref = db.doc('classes/' + id);
+    if (classes[id]) await ref.set(JSON.parse(JSON.stringify(classes[id]))); else await ref.delete();
+  } catch (e) { failed.add(id); }
+  busy.delete(id);
+  if (dirty.has(id)) return flush(id);
+  if (failed.size) setSync('有變更沒有存到雲端，請確認網路。', true);
+  else if (!dirty.size && !busy.size) setSync('已儲存，換手機或電腦開啟都看得到。');
 }
-
-// ---------- 狀態選單 ----------
-const menu = $('menu');
-function openMenu(anchor, hw, stu) {
-  menu.replaceChildren();
-  for (const s of STATUSES) {
-    const b = el('button', { className: 's-' + s.key }, s.label);
-    b.onclick = () => {
-      if (s.key === 'none') delete hw.records[stu.id]; else hw.records[stu.id] = s.key;
-      closeMenu(); commit();
-    };
-    menu.append(b);
-  }
-  menu.style.display = 'flex';
-  const r = anchor.getBoundingClientRect();
-  const left = Math.min(r.left + window.scrollX, window.scrollX + document.documentElement.clientWidth - menu.offsetWidth - 8);
-  let top = r.bottom + window.scrollY + 4;
-  if (r.bottom + menu.offsetHeight + 8 > window.innerHeight) top = r.top + window.scrollY - menu.offsetHeight - 4;
-  menu.style.left = Math.max(8, left) + 'px';
-  menu.style.top = top + 'px';
+function useLocal(why){
+  if (mode === 'local') return;
+  mode = 'local'; classes = store.get('hw-local', {});
+  setSync(why + '目前的記錄只會存在這台裝置的瀏覽器。', true); render();
 }
-function closeMenu() { menu.style.display = 'none'; }
-document.addEventListener('click', e => { if (!menu.contains(e.target)) closeMenu(); });
-$('tableWrap').addEventListener('scroll', closeMenu);
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
-
-// ---------- 通用表單對話框 ----------
-// fields: [{ name, label, type?: 'text'|'date'|'number'|'textarea', value?, required?, hint? }]
-// extra:  [{ label, className?, onClick }]  顯示在左側的額外按鈕（例如刪除）
-function openForm({ title, fields, extra = [], submitLabel = '儲存', onSubmit }) {
-  const dlg = $('dlg'), form = $('dlgForm');
-  form.replaceChildren(el('h2', {}, title));
-  for (const f of fields) {
-    const input = f.type === 'textarea' ? el('textarea') : el('input', { type: f.type || 'text' });
-    input.name = f.name;
-    input.value = f.value ?? '';
-    input.required = !!f.required;
-    form.append(el('label', {}, f.label, input));
-    if (f.hint) form.append(el('p', { className: 'hint' }, f.hint));
-  }
-  const actions = el('div', { className: 'dialog-actions' });
-  for (const x of extra) {
-    const b = el('button', { type: 'button', className: x.className || '' }, x.label);
-    b.onclick = () => { if (x.onClick() !== false) dlg.close(); };
-    actions.append(b);
-  }
-  const cancel = el('button', { type: 'button' }, '取消');
-  cancel.onclick = () => dlg.close();
-  actions.append(el('span', { className: 'spacer' }), cancel,
-    el('button', { type: 'submit', className: 'primary' }, submitLabel));
-  form.append(actions);
-  form.onsubmit = e => {
-    e.preventDefault();
-    const values = Object.fromEntries(fields.map(f => [f.name, form.elements[f.name].value.trim()]));
-    if (onSubmit(values) !== false) dlg.close();
-  };
-  dlg.showModal();
+async function boot(){
+  const giveUp = setTimeout(() => useLocal('連不上雲端資料。'), 10000);
+  try { db = window.claude && window.claude.use ? await window.claude.use('db') : null; } catch (e) { db = null; }
+  if (!db){ clearTimeout(giveUp); return useLocal('沒有登入，或這不是你的頁面。'); }
+  db.collection('classes').onSnapshot(snap => {
+    clearTimeout(giveUp);
+    if (mode === 'local') return;
+    const next = {};
+    snap.docs.forEach(d => { const v = d.data(); if (v) next[d.id] = norm(v); });
+    [...dirty, ...busy, ...failed].forEach(id => { if (classes[id]) next[id] = classes[id]; else delete next[id]; });
+    const first = mode !== 'cloud', same = JSON.stringify(next) === JSON.stringify(classes);
+    classes = next; mode = 'cloud';
+    if (first) setSync('已連上雲端，換手機或電腦開啟都看得到。');
+    if (first || !same) render();
+  }, () => { clearTimeout(giveUp); useLocal('只有這個頁面的擁有者可以讀寫雲端記錄。'); });
+}
+function norm(c){
+  c.students = Array.isArray(c.students) ? c.students : [];
+  c.subjects = Array.isArray(c.subjects) ? c.subjects : [];
+  c.subjects.forEach(s => { s.hw = Array.isArray(s.hw) ? s.hw : []; s.hw.forEach(h => { h.rec = h.rec || {}; }); });
+  return c;
 }
 
-// ---------- 班級 ----------
-$('classSel').onchange = e => { state.classId = e.target.value; state.subjectId = null; commit(); };
-$('addClass').onclick = () => openForm({
-  title: '新增班級',
-  fields: [{ name: 'name', label: '班級名稱', required: true }],
-  submitLabel: '新增',
-  onSubmit: ({ name }) => {
-    const c = { id: uid(), name, students: [], subjects: [] };
-    state.classes.push(c); state.classId = c.id; state.subjectId = null; commit();
-  },
+/* ---------- 分頁與配色 ---------- */
+const TABS = ['mark', 'all', 'roster', 'setup'];
+const tabs = [...document.querySelectorAll('.tab')];
+function showTab(name){
+  if (!TABS.includes(name)) name = 'mark';
+  tabs.forEach(t => t.setAttribute('aria-selected', t.dataset.tab === name));
+  TABS.forEach(id => $(id).hidden = id !== name);
+  store.set('hw-tab', name);
+}
+tabs.forEach(t => t.onclick = () => showTab(t.dataset.tab));
+
+const PALS = [['berry','草莓牛奶','#FFEFF4','#E8528A'],['peach','蜜桃奶油','#FFF4EA','#E9683F'],['mint','薄荷蘇打','#EAF8F4','#14937D'],['lav','薰衣草','#F3EEFF','#8A63E6'],['night','夜晚','#0B0B0D','#FF8FC0']];
+function setPal(id){
+  const p = PALS.find(x => x[0] === id);
+  if (p) document.documentElement.dataset.pal = p[0]; else delete document.documentElement.dataset.pal;
+  store.set('hw-pal', p ? p[0] : null);
+  $('palName').textContent = p ? p[1] : '配色';
+  document.querySelectorAll('.pal').forEach(b => b.setAttribute('aria-pressed', !!p && b.dataset.pal === p[0]));
+}
+PALS.forEach(([id, name, a, b]) => {
+  const btn = el('button', {className: 'pal', title: name});
+  btn.dataset.pal = id; btn.setAttribute('aria-label', '配色：' + name);
+  btn.style.background = `linear-gradient(135deg, ${a} 50%, ${b} 50%)`;
+  btn.onclick = () => setPal(document.documentElement.dataset.pal === id ? null : id);
+  $('pals').insertBefore(btn, $('palName'));
 });
-$('editClass').onclick = () => {
-  const c = curClass();
-  openForm({
-    title: '編輯班級',
-    fields: [{ name: 'name', label: '班級名稱', value: c.name, required: true }],
-    extra: [{ label: '刪除班級', className: 'danger', onClick: () => {
-      if (!confirm(`確定要刪除「${c.name}」嗎？\n班上的學生、科目與所有繳交記錄都會一併刪除，無法復原。`)) return false;
-      state.classes = state.classes.filter(x => x !== c); commit();
-    } }],
-    onSubmit: ({ name }) => { c.name = name; commit(); },
-  });
+
+/* ---------- 編輯視窗（改名、改期限、刪除） ---------- */
+let dlgSave = null, dlgDelete = null, delArmed = false;
+function openEdit({title, fields, note, onSave, onDelete}){
+  $('dlgTitle').textContent = title;
+  $('dlgFields').replaceChildren(...fields.map(f => {
+    const i = el('input', {className: 'f', type: f.type || 'text', id: 'dlg-' + f.key, value: f.value ?? '', required: f.required !== false});
+    return el('label', {}, f.label, i);
+  }));
+  $('dlgNote').textContent = ''; delArmed = false; $('dlgDel').textContent = '刪除';
+  dlgSave = () => onSave(Object.fromEntries(fields.map(f => [f.key, $('dlg-' + f.key).value.trim()])));
+  dlgDelete = onDelete; $('dlgDel').dataset.note = note;
+  $('dlg').showModal();
+}
+$('dlgForm').onsubmit = e => { e.preventDefault(); dlgSave(); $('dlg').close(); };
+$('dlgCancel').onclick = () => $('dlg').close();
+$('dlgDel').onclick = () => {
+  if (!delArmed){ delArmed = true; $('dlgDel').textContent = '確定刪除'; $('dlgNote').textContent = $('dlgDel').dataset.note + '刪掉就救不回來，確定的話再按一次。'; return; }
+  dlgDelete(); $('dlg').close();
 };
 
-// ---------- 科目 ----------
-$('subjectSel').onchange = e => { state.subjectId = e.target.value; commit(); };
-$('addSubject').onclick = () => openForm({
-  title: `新增科目（${curClass().name}）`,
-  fields: [{ name: 'name', label: '科目名稱', required: true }],
-  submitLabel: '新增',
-  onSubmit: ({ name }) => {
-    const s = { id: uid(), name, assignments: [] };
-    curClass().subjects.push(s); state.subjectId = s.id; commit();
-  },
-});
-$('editSubject').onclick = () => {
-  const c = curClass(), s = curSubject();
-  openForm({
-    title: '編輯科目',
-    fields: [{ name: 'name', label: '科目名稱', value: s.name, required: true }],
-    extra: [{ label: '刪除科目', className: 'danger', onClick: () => {
-      if (!confirm(`確定要刪除科目「${s.name}」嗎？\n這個科目的作業與繳交記錄都會一併刪除，無法復原。`)) return false;
-      c.subjects = c.subjects.filter(x => x !== s); commit();
-    } }],
-    onSubmit: ({ name }) => { s.name = name; commit(); },
-  });
-};
+/* ---------- 畫面 ---------- */
+function fillSel(sel, items, value, empty){
+  sel.replaceChildren(...(items.length ? items.map(([v, t]) => el('option', {value: v, textContent: t})) : [el('option', {value: '', textContent: empty})]));
+  sel.disabled = !items.length; if (items.length) sel.value = value;
+}
+const hint = text => el('p', {className: 'note', textContent: text});
+const jump = (text, tab) => { const b = el('button', {className: 'btn', textContent: text}); b.onclick = () => showTab(tab); return b; };
 
-// ---------- 學生 ----------
-$('addStudents').onclick = () => openForm({
-  title: `新增學生（${curClass().name}）`,
-  fields: [{
-    name: 'list', label: '學生名單', type: 'textarea', required: true,
-    hint: '一行一位學生。可寫「座號 姓名」（例如：5 王小明），只寫姓名則自動接續座號。',
-  }],
-  submitLabel: '新增',
-  onSubmit: ({ list }) => {
-    const c = curClass();
-    let next = Math.max(0, ...c.students.map(s => s.seat)) + 1;
-    for (const line of list.split('\n').map(l => l.trim()).filter(Boolean)) {
-      const m = line.match(/^(\d+)[\s,，、.．]+(.+)$/);
-      const seat = m ? Number(m[1]) : next;
-      c.students.push({ id: uid(), seat, name: m ? m[2].trim() : line });
-      next = Math.max(next, seat + 1);
+function render(){
+  if (mode === 'loading') return;
+  const ids = clsIds();
+  if (!C()) cur.c = ids[0] || null;
+  const c = C();
+  if (c && !S()) cur.s = c.subjects[0] ? c.subjects[0].id : null;
+  const s = S();
+  if (s && !H()) cur.h = s.hw.length ? s.hw[s.hw.length - 1].id : null;
+  const h = s ? H() : null;
+  store.set('hw-cur', cur);
+
+  fillSel($('classSel'), ids.map(id => [id, classes[id].name]), cur.c, '還沒有班級');
+  fillSel($('subjSel'), c ? c.subjects.map(x => [x.id, x.name]) : [], cur.s, '還沒有科目');
+
+  /* 登記 */
+  $('hwAddPanel').hidden = !s;
+  const mp = $('markPanel'); mp.replaceChildren();
+  if (!c) mp.append(el('h2', {textContent: '先建立第一個班級'}), hint('到「班級」分頁輸入班級名稱和科目，再到「名單」貼上學生姓名，就可以開始登記作業。'), el('div', {className: 'row'}, jump('去建立班級', 'setup')));
+  else if (!s) mp.append(el('h2', {textContent: c.name + ' 還沒有科目'}), hint('每個科目有自己的作業清單。'), el('div', {className: 'row'}, jump('去新增科目', 'setup')));
+  else if (!h) mp.append(el('h2', {textContent: '還沒有作業'}), hint(`在上面輸入作業名稱和期限，按「加入」，就能登記 ${c.name}「${s.name}」的繳交狀況。`));
+  else {
+    const list = students(c);
+    const sel = el('select', {className: 'f grow', id: 'hwSel'});
+    sel.setAttribute('aria-label', '選擇作業');
+    [...s.hw].reverse().forEach(x => sel.append(el('option', {value: x.id, textContent: (x.due ? fmtDue(x.due) + '　' : '') + x.title})));
+    sel.value = h.id; sel.onchange = () => { cur.h = sel.value; render(); };
+    const edit = el('button', {className: 'btn', textContent: '編輯'});
+    edit.onclick = () => openEdit({
+      title: '編輯作業',
+      fields: [{key: 'title', label: '作業名稱', value: h.title}, {key: 'due', label: '繳交期限（可不填）', type: 'date', value: h.due, required: false}],
+      note: `會刪除「${h.title}」和全班這份作業的繳交記錄。`,
+      onSave: v => { h.title = v.title; h.due = v.due; touch(cur.c); },
+      onDelete: () => { s.hw = s.hw.filter(x => x !== h); cur.h = null; touch(cur.c); }
+    });
+    const n = {o: 0, l: 0, m: 0, n: 0};
+    list.forEach(st => n[h.rec[st.id] || 'n']++);
+    const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const dueText = !h.due ? '沒有設定期限' : '期限 ' + h.due.replace(/-/g, '/') + (h.due < today ? '（已過）' : h.due === today ? '（今天）' : '');
+    mp.append(el('div', {className: 'row'}, sel, edit),
+      el('div', {className: 'due', textContent: dueText}),
+      el('div', {className: 'chips'}, ...ST.map(([k, label]) => el('span', {className: 'chip s-' + k, textContent: `${label} ${n[k]}`}))));
+    if (!list.length) mp.append(hint('這個班級還沒有學生。'), el('div', {className: 'row'}, jump('去加入學生', 'roster')));
+    else {
+      const all = el('button', {className: 'btn', textContent: `未交的 ${n.n} 位全部設為準時`, disabled: !n.n});
+      all.onclick = () => { list.forEach(st => { if (!h.rec[st.id]) h.rec[st.id] = 'o'; }); touch(cur.c); };
+      const box = el('div');
+      list.forEach(st => {
+        const now = h.rec[st.id] || 'n';
+        const seg = el('div', {className: 'seg'});
+        ST.forEach(([k, label]) => {
+          const b = el('button', {textContent: label}); b.dataset.s = k; b.setAttribute('aria-pressed', now === k);
+          b.onclick = () => { if (k === 'n') delete h.rec[st.id]; else h.rec[st.id] = k; touch(cur.c); };
+          seg.append(b);
+        });
+        box.append(el('div', {className: 'item'}, el('span', {className: 'seat', textContent: st.seat}), el('span', {className: 'name', textContent: st.name}), seg));
+      });
+      mp.append(el('div', {className: 'row'}, all), box);
     }
-    commit();
-  },
-});
-function editStudent(stu) {
-  const c = curClass();
-  openForm({
-    title: '編輯學生',
-    fields: [
-      { name: 'seat', label: '座號', type: 'number', value: stu.seat, required: true },
-      { name: 'name', label: '姓名', value: stu.name, required: true },
-    ],
-    extra: [{ label: '刪除學生', className: 'danger', onClick: () => {
-      if (!confirm(`確定要刪除「${stu.name}」嗎？\n這位學生在本班所有科目的繳交記錄都會一併刪除，無法復原。`)) return false;
-      c.students = c.students.filter(x => x !== stu);
-      for (const s of c.subjects) for (const hw of s.assignments) delete hw.records[stu.id];
-      commit();
-    } }],
-    onSubmit: ({ seat, name }) => { stu.seat = Number(seat) || 0; stu.name = name; commit(); },
+  }
+
+  /* 總覽 */
+  const ap = $('allPanel'); ap.replaceChildren();
+  if (!s || !s.hw.length || !c.students.length) ap.append(hint('有學生名單和至少一份作業之後，這裡會列出每位學生每份作業的繳交狀況，以及各自缺交幾份。'));
+  else {
+    const head = el('tr', {}, el('th', {className: 'stu', textContent: '學生'}), el('th', {textContent: '缺交'}));
+    s.hw.forEach(x => {
+      const b = el('button', {className: 'hwh'}, x.title, el('small', {textContent: fmtDue(x.due) || '—'}));
+      b.onclick = () => { cur.h = x.id; render(); showTab('mark'); };
+      head.append(el('th', {}, b));
+    });
+    const body = el('tbody');
+    students(c).forEach(st => {
+      const miss = s.hw.filter(x => !x.rec[st.id]).length;
+      const tr = el('tr', {}, el('th', {className: 'stu'}, el('span', {className: 'seat', textContent: st.seat + ' '}), st.name),
+        el('td', {className: 'miss', textContent: miss || ''}));
+      s.hw.forEach(x => { const k = x.rec[st.id] || 'n'; tr.append(el('td', {}, el('span', {className: 'cell s-' + k, textContent: ST.find(t => t[0] === k)[2]}))); });
+      body.append(tr);
+    });
+    ap.append(el('h2', {textContent: `${c.name}・${s.name}`}), el('div', {className: 'scroll'}, el('table', {}, el('thead', {}, head), body)));
+  }
+
+  /* 名單 */
+  $('stuAddPanel').hidden = !c;
+  const sp = $('stuPanel'); sp.replaceChildren();
+  if (!c) sp.append(hint('先到「班級」分頁建立班級，才能加入學生。'), el('div', {className: 'row'}, jump('去建立班級', 'setup')));
+  else {
+    $('stuAddTitle').textContent = '加入學生到 ' + c.name;
+    sp.append(el('h2', {textContent: `${c.name} 共 ${c.students.length} 位`}));
+    if (!c.students.length) sp.append(hint('還沒有學生。把名單貼在上面，一行一位。'));
+    students(c).forEach(st => {
+      const b = el('button', {className: 'x', textContent: '編輯'});
+      b.onclick = () => openEdit({
+        title: '編輯學生',
+        fields: [{key: 'seat', label: '座號', type: 'number', value: st.seat}, {key: 'name', label: '姓名', value: st.name}],
+        note: `會刪除「${st.name}」和這位學生在 ${c.name} 所有科目的繳交記錄。`,
+        onSave: v => { st.seat = parseInt(v.seat, 10) || 0; st.name = v.name; touch(cur.c); },
+        onDelete: () => { c.students = c.students.filter(x => x !== st); c.subjects.forEach(x => x.hw.forEach(y => delete y.rec[st.id])); touch(cur.c); }
+      });
+      sp.append(el('div', {className: 'item'}, el('span', {className: 'seat', textContent: st.seat}), el('span', {className: 'name', textContent: st.name}), b));
+    });
+  }
+
+  /* 班級與科目 */
+  const cl = $('clsList'); cl.replaceChildren();
+  if (!ids.length) cl.append(hint('還沒有班級。輸入名稱後按「新增班級」。'));
+  ids.forEach(id => {
+    const x = classes[id];
+    const b = el('button', {className: 'x', textContent: '編輯'});
+    b.onclick = () => openEdit({
+      title: '編輯班級', fields: [{key: 'name', label: '班級名稱', value: x.name}],
+      note: `會刪除「${x.name}」的學生名單、所有科目和繳交記錄。`,
+      onSave: v => { x.name = v.name; touch(id); },
+      onDelete: () => { delete classes[id]; touch(id); }
+    });
+    const nm = el('span', {className: 'name'}, x.name, el('span', {className: 'note', textContent: `　${x.students.length} 位學生・${x.subjects.length} 個科目`}));
+    if (id === cur.c) nm.append(el('span', {className: 'cur', textContent: '目前'}));
+    cl.append(el('div', {className: 'item'}, nm, b));
   });
+  $('subjPanel').hidden = !c;
+  if (c){
+    $('subjTitle').textContent = c.name + ' 的科目';
+    const sl = $('subjList'); sl.replaceChildren();
+    if (!c.subjects.length) sl.append(hint('還沒有科目。輸入名稱後按「新增科目」。'));
+    c.subjects.forEach(x => {
+      const b = el('button', {className: 'x', textContent: '編輯'});
+      b.onclick = () => openEdit({
+        title: '編輯科目', fields: [{key: 'name', label: '科目名稱', value: x.name}],
+        note: `會刪除 ${c.name}「${x.name}」的 ${x.hw.length} 份作業和繳交記錄。`,
+        onSave: v => { x.name = v.name; touch(cur.c); },
+        onDelete: () => { c.subjects = c.subjects.filter(y => y !== x); touch(cur.c); }
+      });
+      const nm = el('span', {className: 'name'}, x.name, el('span', {className: 'note', textContent: `　${x.hw.length} 份作業`}));
+      if (x.id === cur.s) nm.append(el('span', {className: 'cur', textContent: '目前'}));
+      sl.append(el('div', {className: 'item'}, nm, b));
+    });
+  }
 }
 
-// ---------- 作業 ----------
-const hwFields = hw => [
-  { name: 'title', label: '作業名稱', value: hw?.title, required: true },
-  { name: 'due', label: '繳交期限（可不填）', type: 'date', value: hw?.due },
-];
-$('addHw').onclick = () => openForm({
-  title: `新增作業（${curClass().name}・${curSubject().name}）`,
-  fields: hwFields(null),
-  submitLabel: '新增',
-  onSubmit: ({ title, due }) => {
-    curSubject().assignments.push({ id: uid(), title, due, records: {} });
-    commit();
-    const wrap = $('tableWrap'); wrap.scrollLeft = wrap.scrollWidth;
-  },
-});
-function editAssignment(hw) {
-  const c = curClass(), s = curSubject();
-  openForm({
-    title: '編輯作業',
-    fields: hwFields(hw),
-    extra: [
-      { label: '未交者全設為準時', onClick: () => {
-        for (const stu of c.students) if (!hw.records[stu.id]) hw.records[stu.id] = 'ontime';
-        commit();
-      } },
-      { label: '刪除作業', className: 'danger', onClick: () => {
-        if (!confirm(`確定要刪除作業「${hw.title}」嗎？\n全班這份作業的繳交記錄都會一併刪除，無法復原。`)) return false;
-        s.assignments = s.assignments.filter(x => x !== hw); commit();
-      } },
-    ],
-    onSubmit: ({ title, due }) => { hw.title = title; hw.due = due; commit(); },
+/* ---------- 操作 ---------- */
+$('classSel').onchange = () => { cur = {c: $('classSel').value, s: null, h: null}; render(); };
+$('subjSel').onchange = () => { cur.s = $('subjSel').value; cur.h = null; render(); };
+const need = input => { if (!input.value.trim()){ input.focus(); return null; } return input.value.trim(); };
+$('clsAdd').onclick = () => {
+  const name = need($('clsName')); if (!name || mode === 'loading') return;
+  const id = 'c' + uid(); classes[id] = {name, order: Date.now(), students: [], subjects: []};
+  cur = {c: id, s: null, h: null}; $('clsName').value = ''; touch(id); $('subjName').focus();
+};
+$('subjAdd').onclick = () => {
+  const c = C(), name = need($('subjName')); if (!c || !name) return;
+  const s = {id: 's' + uid(), name, hw: []}; c.subjects.push(s);
+  cur.s = s.id; cur.h = null; $('subjName').value = ''; touch(cur.c);
+};
+$('stuAdd').onclick = () => {
+  const c = C(), text = need($('stuList')); if (!c || !text) return;
+  let next = Math.max(0, ...c.students.map(s => s.seat)) + 1;
+  text.split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
+    const m = line.match(/^(\d+)[\s,，、.．:：]*(\S.*)$/);
+    const seat = m ? Number(m[1]) : next;
+    c.students.push({id: 'p' + uid(), seat, name: m ? m[2].trim() : line});
+    next = Math.max(next, seat + 1);
   });
-}
+  $('stuList').value = ''; touch(cur.c);
+};
+$('hwAdd').onclick = () => {
+  const s = S(), title = need($('hwTitle')); if (!s || !title) return;
+  const h = {id: 'h' + uid(), title, due: $('hwDue').value, rec: {}}; s.hw.push(h);
+  cur.h = h.id; $('hwTitle').value = ''; touch(cur.c);
+};
+[['clsName','clsAdd'],['subjName','subjAdd'],['hwTitle','hwAdd']].forEach(([i, b]) => $(i).addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) $(b).click(); }));
 
-render();
+setPal(store.get('hw-pal', null));
+showTab(store.get('hw-tab', 'mark'));
+boot();
 </script>
-</body>
-</html>
