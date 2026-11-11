@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>作業繳交記錄</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --panel: #ffffff; --text: #1f2430; --muted: #6b7280;
+    --line: #dfe3ea; --accent: #2f5fd0; --accent-text: #ffffff;
+    --none-bg: #fde8e8; --none-fg: #a12222;
+    --ontime-bg: #dff3e4; --ontime-fg: #17663a;
+    --late-bg: #fdf0d2; --late-fg: #8a5a00;
+    --makeup-bg: #dfeafd; --makeup-fg: #1f4fa8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15181e; --panel: #1e222b; --text: #e7e9ee; --muted: #9aa1ae;
+      --line: #323845; --accent: #6f97f5; --accent-text: #10131a;
+      --none-bg: #4a2224; --none-fg: #ffb4b4;
+      --ontime-bg: #1d4029; --ontime-fg: #a5e6b8;
+      --late-bg: #4a3a12; --late-fg: #f5d58a;
+      --makeup-bg: #1f3358; --makeup-fg: #b3ccff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  }
+  header { padding: 16px; max-width: 1200px; margin: 0 auto; }
+  h1 { margin: 0 0 12px; font-size: 1.4rem; }
+  .pickers { display: flex; flex-wrap: wrap; gap: 12px 24px; }
+  .picker { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .picker label { font-weight: 600; }
+  select, input, textarea, button { font: inherit; color: inherit; }
+  select, input, textarea {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px;
+  }
+  select { min-width: 8em; max-width: 14em; }
+  button {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 12px; cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  button.danger { color: var(--none-fg); }
+  button.small { padding: 4px 8px; font-size: .85rem; }
+  main { padding: 0 16px 32px; max-width: 1200px; margin: 0 auto; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; align-items: center; }
+  .legend { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; font-size: .85rem; }
+  .chip { border-radius: 999px; padding: 2px 10px; font-weight: 600; white-space: nowrap; }
+  .s-none { background: var(--none-bg); color: var(--none-fg); }
+  .s-ontime { background: var(--ontime-bg); color: var(--ontime-fg); }
+  .s-late { background: var(--late-bg); color: var(--late-fg); }
+  .s-makeup { background: var(--makeup-bg); color: var(--makeup-fg); }
+  .table-wrap {
+    overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    max-height: calc(100vh - 220px); min-height: 200px;
+  }
+  table { border-collapse: separate; border-spacing: 0; }
+  th, td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); padding: 6px 8px; }
+  thead th { position: sticky; top: 0; background: var(--panel); z-index: 2; vertical-align: bottom; }
+  th.name, td.name {
+    position: sticky; left: 0; background: var(--panel); z-index: 1;
+    text-align: left; white-space: nowrap; min-width: 7.5em;
+  }
+  thead th.name { z-index: 3; }
+  .hw-head, .stu-btn { border: none; background: none; padding: 2px 4px; text-align: inherit; width: 100%; }
+  .hw-head { min-width: 6em; max-width: 10em; }
+  .hw-title { font-weight: 700; display: block; word-break: break-word; }
+  .hw-meta { font-weight: 400; font-size: .8rem; color: var(--muted); display: block; }
+  .seat { color: var(--muted); margin-right: 6px; font-variant-numeric: tabular-nums; }
+  td.cell { text-align: center; padding: 4px; }
+  .status-btn { border: none; width: 100%; min-width: 4.2em; font-weight: 600; padding: 6px 4px; }
+  .empty { padding: 32px 16px; text-align: center; color: var(--muted); }
+  #menu {
+    position: absolute; display: none; flex-direction: column; gap: 4px; z-index: 10;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.2);
+  }
+  #menu button { border: none; font-weight: 600; min-width: 6em; }
+  dialog {
+    border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--text);
+    padding: 20px; width: min(420px, calc(100vw - 32px));
+  }
+  dialog::backdrop { background: rgba(0,0,0,.4); }
+  dialog h2 { margin: 0 0 12px; font-size: 1.15rem; }
+  dialog label { display: block; font-weight: 600; margin-top: 10px; }
+  dialog input, dialog textarea { width: 100%; margin-top: 4px; }
+  dialog textarea { min-height: 10em; resize: vertical; }
+  .hint { color: var(--muted); font-size: .85rem; margin: 4px 0 0; }
+  .dialog-actions { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+  .dialog-actions .spacer { flex: 1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>作業繳交記錄</h1>
+  <div class="pickers">
+    <div class="picker">
+      <label for="classSel">班級</label>
+      <select id="classSel"></select>
+      <button class="small" id="addClass">＋新增</button>
+      <button class="small" id="editClass">編輯</button>
+    </div>
+    <div class="picker">
+      <label for="subjectSel">科目</label>
+      <select id="subjectSel"></select>
+      <button class="small" id="addSubject">＋新增</button>
+      <button class="small" id="editSubject">編輯</button>
+    </div>
+  </div>
+</header>
+<main>
+  <div class="toolbar">
+    <button class="primary" id="addHw">＋新增作業</button>
+    <button id="addStudents">＋新增學生</button>
+    <div class="legend">
+      <span class="chip s-ontime">準時</span>
+      <span class="chip s-late">遲交</span>
+      <span class="chip s-makeup">補交</span>
+      <span class="chip s-none">未交</span>
+    </div>
+  </div>
+  <div class="table-wrap" id="tableWrap"></div>
+  <p class="hint">點格子可切換繳交狀態；點作業名稱或學生姓名可編輯、刪除。資料儲存在這台裝置的瀏覽器中。</p>
+</main>
+
+<div id="menu"></div>
+<dialog id="dlg"><form method="dialog" id="dlgForm"></form></dialog>
+
+<script>
+const STORAGE_KEY = 'homework-tracker-v1';
+const STATUSES = [
+  { key: 'ontime', label: '準時' },
+  { key: 'late', label: '遲交' },
+  { key: 'makeup', label: '補交' },
+  { key: 'none', label: '未交' },
+];
+const LABEL = Object.fromEntries(STATUSES.map(s => [s.key, s.label]));
+
+// 資料結構：
+// classes: [{ id, name, students: [{id, seat, name}],
+//             subjects: [{ id, name, assignments: [{id, title, due, records: {studentId: status}}] }] }]
+let state = load();
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) { console.warn('讀取資料失敗', e); }
+  return { classes: [], classId: null, subjectId: null };
+}
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch (e) { alert('資料儲存失敗，請確認瀏覽器沒有停用網站儲存空間。'); }
+}
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const $ = id => document.getElementById(id);
+function el(tag, props = {}, ...children) {
+  const node = Object.assign(document.createElement(tag), props);
+  node.append(...children);
+  return node;
+}
+const curClass = () => state.classes.find(c => c.id === state.classId) || null;
+const curSubject = () => { const c = curClass(); return c ? c.subjects.find(s => s.id === state.subjectId) || null : null; };
+
+function commit() { save(); render(); }
+
+// ---------- 畫面 ----------
+function render() {
+  // 修正目前選取的班級／科目
+  if (!curClass()) state.classId = state.classes[0]?.id ?? null;
+  const cls = curClass();
+  if (cls && !curSubject()) state.subjectId = cls.subjects[0]?.id ?? null;
+  if (!cls) state.subjectId = null;
+  const sub = curSubject();
+
+  fillSelect($('classSel'), state.classes, state.classId, '（尚無班級）');
+  fillSelect($('subjectSel'), cls ? cls.subjects : [], state.subjectId, '（尚無科目）');
+  $('editClass').disabled = !cls;
+  $('addSubject').disabled = !cls;
+  $('editSubject').disabled = !sub;
+  $('addStudents').disabled = !cls;
+  $('addHw').disabled = !sub;
+
+  const wrap = $('tableWrap');
+  wrap.replaceChildren();
+  if (!cls) return wrap.append(el('div', { className: 'empty' }, '請先按「＋新增」建立一個班級。'));
+  if (!sub) return wrap.append(el('div', { className: 'empty' }, '請先為這個班級新增一個科目。'));
+  if (!cls.students.length && !sub.assignments.length)
+    return wrap.append(el('div', { className: 'empty' }, '請新增學生名單與作業。'));
+
+  const students = [...cls.students].sort((a, b) => a.seat - b.seat);
+  const table = el('table');
+  const headRow = el('tr', {}, el('th', { className: 'name' }, '學生'));
+  for (const hw of sub.assignments) {
+    const done = students.filter(s => (hw.records[s.id] || 'none') !== 'none').length;
+    const btn = el('button', { className: 'hw-head', title: '編輯作業' },
+      el('span', { className: 'hw-title' }, hw.title),
+      el('span', { className: 'hw-meta' }, hw.due ? '期限 ' + hw.due.slice(5).replace('-', '/') : '無期限'),
+      el('span', { className: 'hw-meta' }, `已交 ${done}/${students.length}`));
+    btn.onclick = () => editAssignment(hw);
+    headRow.append(el('th', {}, btn));
+  }
+  table.append(el('thead', {}, headRow));
+
+  const tbody = el('tbody');
+  for (const stu of students) {
+    const nameBtn = el('button', { className: 'stu-btn', title: '編輯學生' },
+      el('span', { className: 'seat' }, String(stu.seat)), stu.name);
+    nameBtn.onclick = () => editStudent(stu);
+    const row = el('tr', {}, el('td', { className: 'name' }, nameBtn));
+    for (const hw of sub.assignments) {
+      const status = hw.records[stu.id] || 'none';
+      const btn = el('button', { className: 'status-btn s-' + status }, LABEL[status]);
+      btn.onclick = e => { e.stopPropagation(); openMenu(btn, hw, stu); };
+      row.append(el('td', { className: 'cell' }, btn));
+    }
+    tbody.append(row);
+  }
+  table.append(tbody);
+  wrap.append(table);
+}
+
+function fillSelect(sel, items, selectedId, emptyText) {
+  sel.replaceChildren();
+  if (!items.length) sel.append(el('option', { value: '' }, emptyText));
+  for (const it of items) sel.append(el('option', { value: it.id, selected: it.id === selectedId }, it.name));
+  sel.disabled = !items.length;
+}
+
+// ---------- 狀態選單 ----------
+const menu = $('menu');
+function openMenu(anchor, hw, stu) {
+  menu.replaceChildren();
+  for (const s of STATUSES) {
+    const b = el('button', { className: 's-' + s.key }, s.label);
+    b.onclick = () => {
+      if (s.key === 'none') delete hw.records[stu.id]; else hw.records[stu.id] = s.key;
+      closeMenu(); commit();
+    };
+    menu.append(b);
+  }
+  menu.style.display = 'flex';
+  const r = anchor.getBoundingClientRect();
+  const left = Math.min(r.left + window.scrollX, window.scrollX + document.documentElement.clientWidth - menu.offsetWidth - 8);
+  let top = r.bottom + window.scrollY + 4;
+  if (r.bottom + menu.offsetHeight + 8 > window.innerHeight) top = r.top + window.scrollY - menu.offsetHeight - 4;
+  menu.style.left = Math.max(8, left) + 'px';
+  menu.style.top = top + 'px';
+}
+function closeMenu() { menu.style.display = 'none'; }
+document.addEventListener('click', e => { if (!menu.contains(e.target)) closeMenu(); });
+$('tableWrap').addEventListener('scroll', closeMenu);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenu(); });
+
+// ---------- 通用表單對話框 ----------
+// fields: [{ name, label, type?: 'text'|'date'|'number'|'textarea', value?, required?, hint? }]
+// extra:  [{ label, className?, onClick }]  顯示在左側的額外按鈕（例如刪除）
+function openForm({ title, fields, extra = [], submitLabel = '儲存', onSubmit }) {
+  const dlg = $('dlg'), form = $('dlgForm');
+  form.replaceChildren(el('h2', {}, title));
+  for (const f of fields) {
+    const input = f.type === 'textarea' ? el('textarea') : el('input', { type: f.type || 'text' });
+    input.name = f.name;
+    input.value = f.value ?? '';
+    input.required = !!f.required;
+    form.append(el('label', {}, f.label, input));
+    if (f.hint) form.append(el('p', { className: 'hint' }, f.hint));
+  }
+  const actions = el('div', { className: 'dialog-actions' });
+  for (const x of extra) {
+    const b = el('button', { type: 'button', className: x.className || '' }, x.label);
+    b.onclick = () => { if (x.onClick() !== false) dlg.close(); };
+    actions.append(b);
+  }
+  const cancel = el('button', { type: 'button' }, '取消');
+  cancel.onclick = () => dlg.close();
+  actions.append(el('span', { className: 'spacer' }), cancel,
+    el('button', { type: 'submit', className: 'primary' }, submitLabel));
+  form.append(actions);
+  form.onsubmit = e => {
+    e.preventDefault();
+    const values = Object.fromEntries(fields.map(f => [f.name, form.elements[f.name].value.trim()]));
+    if (onSubmit(values) !== false) dlg.close();
+  };
+  dlg.showModal();
+}
+
+// ---------- 班級 ----------
+$('classSel').onchange = e => { state.classId = e.target.value; state.subjectId = null; commit(); };
+$('addClass').onclick = () => openForm({
+  title: '新增班級',
+  fields: [{ name: 'name', label: '班級名稱', required: true }],
+  submitLabel: '新增',
+  onSubmit: ({ name }) => {
+    const c = { id: uid(), name, students: [], subjects: [] };
+    state.classes.push(c); state.classId = c.id; state.subjectId = null; commit();
+  },
+});
+$('editClass').onclick = () => {
+  const c = curClass();
+  openForm({
+    title: '編輯班級',
+    fields: [{ name: 'name', label: '班級名稱', value: c.name, required: true }],
+    extra: [{ label: '刪除班級', className: 'danger', onClick: () => {
+      if (!confirm(`確定要刪除「${c.name}」嗎？\n班上的學生、科目與所有繳交記錄都會一併刪除，無法復原。`)) return false;
+      state.classes = state.classes.filter(x => x !== c); commit();
+    } }],
+    onSubmit: ({ name }) => { c.name = name; commit(); },
+  });
+};
+
+// ---------- 科目 ----------
+$('subjectSel').onchange = e => { state.subjectId = e.target.value; commit(); };
+$('addSubject').onclick = () => openForm({
+  title: `新增科目（${curClass().name}）`,
+  fields: [{ name: 'name', label: '科目名稱', required: true }],
+  submitLabel: '新增',
+  onSubmit: ({ name }) => {
+    const s = { id: uid(), name, assignments: [] };
+    curClass().subjects.push(s); state.subjectId = s.id; commit();
+  },
+});
+$('editSubject').onclick = () => {
+  const c = curClass(), s = curSubject();
+  openForm({
+    title: '編輯科目',
+    fields: [{ name: 'name', label: '科目名稱', value: s.name, required: true }],
+    extra: [{ label: '刪除科目', className: 'danger', onClick: () => {
+      if (!confirm(`確定要刪除科目「${s.name}」嗎？\n這個科目的作業與繳交記錄都會一併刪除，無法復原。`)) return false;
+      c.subjects = c.subjects.filter(x => x !== s); commit();
+    } }],
+    onSubmit: ({ name }) => { s.name = name; commit(); },
+  });
+};
+
+// ---------- 學生 ----------
+$('addStudents').onclick = () => openForm({
+  title: `新增學生（${curClass().name}）`,
+  fields: [{
+    name: 'list', label: '學生名單', type: 'textarea', required: true,
+    hint: '一行一位學生。可寫「座號 姓名」（例如：5 王小明），只寫姓名則自動接續座號。',
+  }],
+  submitLabel: '新增',
+  onSubmit: ({ list }) => {
+    const c = curClass();
+    let next = Math.max(0, ...c.students.map(s => s.seat)) + 1;
+    for (const line of list.split('\n').map(l => l.trim()).filter(Boolean)) {
+      const m = line.match(/^(\d+)[\s,，、.．]+(.+)$/);
+      const seat = m ? Number(m[1]) : next;
+      c.students.push({ id: uid(), seat, name: m ? m[2].trim() : line });
+      next = Math.max(next, seat + 1);
+    }
+    commit();
+  },
+});
+function editStudent(stu) {
+  const c = curClass();
+  openForm({
+    title: '編輯學生',
+    fields: [
+      { name: 'seat', label: '座號', type: 'number', value: stu.seat, required: true },
+      { name: 'name', label: '姓名', value: stu.name, required: true },
+    ],
+    extra: [{ label: '刪除學生', className: 'danger', onClick: () => {
+      if (!confirm(`確定要刪除「${stu.name}」嗎？\n這位學生在本班所有科目的繳交記錄都會一併刪除，無法復原。`)) return false;
+      c.students = c.students.filter(x => x !== stu);
+      for (const s of c.subjects) for (const hw of s.assignments) delete hw.records[stu.id];
+      commit();
+    } }],
+    onSubmit: ({ seat, name }) => { stu.seat = Number(seat) || 0; stu.name = name; commit(); },
+  });
+}
+
+// ---------- 作業 ----------
+const hwFields = hw => [
+  { name: 'title', label: '作業名稱', value: hw?.title, required: true },
+  { name: 'due', label: '繳交期限（可不填）', type: 'date', value: hw?.due },
+];
+$('addHw').onclick = () => openForm({
+  title: `新增作業（${curClass().name}・${curSubject().name}）`,
+  fields: hwFields(null),
+  submitLabel: '新增',
+  onSubmit: ({ title, due }) => {
+    curSubject().assignments.push({ id: uid(), title, due, records: {} });
+    commit();
+    const wrap = $('tableWrap'); wrap.scrollLeft = wrap.scrollWidth;
+  },
+});
+function editAssignment(hw) {
+  const c = curClass(), s = curSubject();
+  openForm({
+    title: '編輯作業',
+    fields: hwFields(hw),
+    extra: [
+      { label: '未交者全設為準時', onClick: () => {
+        for (const stu of c.students) if (!hw.records[stu.id]) hw.records[stu.id] = 'ontime';
+        commit();
+      } },
+      { label: '刪除作業', className: 'danger', onClick: () => {
+        if (!confirm(`確定要刪除作業「${hw.title}」嗎？\n全班這份作業的繳交記錄都會一併刪除，無法復原。`)) return false;
+        s.assignments = s.assignments.filter(x => x !== hw); commit();
+      } },
+    ],
+    onSubmit: ({ title, due }) => { hw.title = title; hw.due = due; commit(); },
+  });
+}
+
+render();
+</script>
+</body>
+</html>
