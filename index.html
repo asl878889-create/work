@@ -119,8 +119,12 @@ dialog{border:1px solid var(--line);border-radius:22px;background:var(--surface)
 #missDlg{width:min(560px,calc(100vw - 24px));max-height:85vh;overflow:auto;padding:18px 16px}
 #missDlg[open]{display:flex;flex-direction:column;gap:12px}
 #missPanel,#markPanel{display:flex;flex-direction:column;gap:14px}
-.both{display:flex;gap:10px;align-items:center;font-size:16px}
-.both input{width:22px;height:22px;accent-color:var(--jade);flex:none}
+.both{display:flex;gap:6px;align-items:center;font-size:15px;margin-left:auto}
+.both input{width:18px;height:18px;accent-color:var(--jade);flex:none;margin:0}
+#hwAddPanel{padding:12px;gap:8px}
+#hwAddPanel .cls button{padding:3px 0;font-size:15px}
+#hwAddPanel .f{padding:4px 12px}
+#hwAddPanel .btn{padding:6px 18px}
 dialog::backdrop{background:rgba(0,0,0,.45)}
 dialog form{display:flex;flex-direction:column;gap:12px}
 dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
@@ -146,19 +150,16 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
 
   <section id="mark" class="mark">
     <div class="panel" id="hwAddPanel">
-      <h2>出一份新作業</h2>
       <div class="cls" id="subjSel" role="group" aria-label="科目"></div>
       <div class="row">
-        <input id="hwTitle" class="f grow" type="text" placeholder="作業名稱" aria-label="作業名稱">
-      </div>
-      <div class="row">
-        <span class="note">繳交期限</span>
-        <select id="hwM" class="f" aria-label="期限的月份"></select>
-        <select id="hwD" class="f" aria-label="期限的日期"></select>
-        <span class="grow"></span>
+        <input id="hwTitle" class="f grow" type="text" placeholder="新作業名稱" aria-label="作業名稱">
         <button class="btn primary" id="hwAdd">加入</button>
       </div>
-      <label class="both"><input type="checkbox" id="hwBoth"><span id="hwBothLbl"></span></label>
+      <div class="row">
+        <select id="hwM" class="f" aria-label="期限的月份"></select>
+        <select id="hwD" class="f" aria-label="期限的日期"></select>
+        <label class="both"><input type="checkbox" id="hwBoth"><span id="hwBothLbl"></span></label>
+      </div>
     </div>
     <div class="panel" id="markCard">
       <div class="cls" id="subjSel3" role="group" aria-label="科目"></div>
