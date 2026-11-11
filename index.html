@@ -82,6 +82,10 @@ section{display:flex;flex-direction:column;gap:14px}
 .s-n,.seg button[data-s="n"][aria-pressed="true"]{background:var(--no-bg);color:var(--no-fg);border-color:transparent}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .mgrp{display:flex;flex-direction:column;gap:6px}
+.srow{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:6px 0;border-bottom:1px solid var(--line)}
+.srow b{overflow-wrap:anywhere;font-size:15px}
+.srow .chips{gap:4px;flex:1 1 auto}
+.srow .mchip{padding:1px 9px;font-size:13px}
 .mrow2{display:flex;flex-wrap:wrap;gap:0 8px;align-items:baseline;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:16px;padding:6px 12px;text-align:left;width:100%;font-size:15px}
 .mrow2.over{background:var(--no-bg);color:var(--no-fg);border-color:transparent}
 .mrow2 .mt{font-weight:700}
@@ -456,32 +460,42 @@ function draw(){
     }
   }
 
-  /* 缺交：兩個班級、四個科目合在一起看，一份作業一列 */
+  /* 缺交：兩個班級、四個科目合在一起看，一位學生一列 */
   const qp = $('missPanel'); qp.replaceChildren();
   const now = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   FIXED.forEach(cid => {
     const k = classes[cid]; if (!k) return;
-    const rows = [];
-    k.subjects.forEach(x => x.hw.forEach(y => {
-      const names = students(k).filter(st => !y.rec[st.id]).map(st => st.name);
-      if (names.length) rows.push({x, y, names, over: !!y.due && y.due < now});
-    }));
-    rows.sort((p, q) => (q.over - p.over) || (p.y.due || '9').localeCompare(q.y.due || '9'));
-    const total = rows.reduce((n, r) => n + r.names.length, 0), overdue = rows.reduce((n, r) => n + (r.over ? r.names.length : 0), 0);
+    const rows = students(k).map(st => {
+      const list = [];
+      k.subjects.forEach(x => x.hw.forEach(y => { if (!y.rec[st.id]) list.push({x, y, over: !!y.due && y.due < now}); }));
+      list.sort((p, q) => (q.over - p.over) || (p.y.due || '9').localeCompare(q.y.due || '9'));
+      return {st, list, over: list.filter(i => i.over).length};
+    });
+    const lacking = rows.filter(r => r.list.length).sort((p, q) => (q.over - p.over) || (q.list.length - p.list.length));
+    const done = rows.filter(r => !r.list.length);
+    const total = lacking.reduce((n, r) => n + r.list.length, 0), overdue = lacking.reduce((n, r) => n + r.over, 0);
     const head = el('div', {className: 'mhead'}, el('b', {textContent: cid}));
     if (overdue) head.append(el('span', {className: 'chip s-n', textContent: `過期 ${overdue}`}));
     if (total) head.append(el('span', {className: 'chip', style: 'border:1px solid var(--line)', textContent: `未交 ${total}`}));
     const grp = el('div', {className: 'mgrp'}, head);
-    if (!rows.length) grp.append(el('p', {className: 'note', textContent: k.students.length ? '沒有未交的作業' : '還沒有學生'}));
-    rows.forEach(r => {
-      const b = el('button', {className: 'mrow2' + (r.over ? ' over' : '')},
-        el('span', {className: 'mt', textContent: `${r.x.name}・${r.y.title}`}),
-        el('small', {textContent: fmtDue(r.y.due)}),
-        el('span', {className: 'mn', textContent: `${r.names.length} 人`}),
-        el('span', {className: 'ms', textContent: r.names.join('、')}));
-      b.onclick = () => { cur.c = cid; cur.s = r.x.id; cur.h = r.y.id; $('missDlg').close(); render(); jumpMark(); };
-      grp.append(b);
+    if (!k.students.length) grp.append(el('p', {className: 'note', textContent: '還沒有學生'}));
+    const groups = [];                 // 缺的作業一模一樣的學生併成一列
+    lacking.forEach(r => {
+      const sig = r.list.map(i => i.x.id + '/' + i.y.id).join('|'), g = groups.find(q => q.sig === sig);
+      if (g) g.names.push(r.st.name); else groups.push({sig, names: [r.st.name], list: r.list});
     });
+    groups.forEach(r => {
+      const chips = el('div', {className: 'chips'});
+      r.list.forEach(({x, y, over}) => {
+        const b = el('button', {className: 'mchip' + (over ? ' over' : '')}, `${x.name}・${y.title}`);
+        if (y.due) b.append(' ', el('small', {textContent: fmtDue(y.due)}));
+        b.onclick = () => { cur.c = cid; cur.s = x.id; cur.h = y.id; $('missDlg').close(); render(); jumpMark(); };
+        chips.append(b);
+      });
+      grp.append(el('div', {className: 'srow'}, el('b', {textContent: r.names.join('、')}), chips));
+    });
+    if (k.students.length && !lacking.length) grp.append(el('div', {className: 'okline', textContent: '全部交齊'}));
+    else if (done.length) grp.append(el('div', {className: 'okline', textContent: '交齊：' + done.map(r => r.st.name).join('、')}));
     qp.append(grp);
   });
 
