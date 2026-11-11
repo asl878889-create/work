@@ -451,11 +451,12 @@ $('stuAdd').onclick = () => {
 $('hwAdd').onclick = () => {
   const s = S(), title = need($('hwTitle')); if (!s || !title) return;
   const h = {id: 'h' + uid(), title, due: mdValue($('hwM'), $('hwD')), rec: {}}; s.hw.push(h);
-  cur.h = h.id; $('hwTitle').value = ''; $('hwM').value = ''; $('hwD').value = ''; touch(cur.c);
+  cur.h = h.id; $('hwTitle').value = ''; dueToday(); touch(cur.c);
 };
 [['hwTitle','hwAdd']].forEach(([i, b]) => $(i).addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) $(b).click(); }));
 
-fillMD($('hwM'), $('hwD'), '');
+const dueToday = () => { const n = new Date(); $('hwM').value = n.getMonth() + 1; $('hwD').value = n.getDate(); };   // 期限預設今天
+fillMD($('hwM'), $('hwD'), ''); dueToday();
 setPal(store.get('hw-pal', null));
 showTab(store.get('hw-tab', 'mark'));
 boot();
