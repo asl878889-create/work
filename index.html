@@ -60,7 +60,7 @@ textarea.f{border-radius:18px;min-height:2.6em;resize:vertical}
 .tab{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 0;font-weight:500;font-size:15px;min-width:0;white-space:nowrap}
 .tab[aria-selected="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 section{display:flex;flex-direction:column;gap:14px}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .grow{flex:1;min-width:0}
 .btn{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:8px 16px;font-weight:500;white-space:nowrap}
@@ -68,8 +68,9 @@ section{display:flex;flex-direction:column;gap:14px}
 .btn.danger{color:var(--no-fg)}
 .btn:disabled{opacity:.5;cursor:default}
 #stuPanel{gap:4px}
+#stuPanel h2{margin-bottom:6px}
 #stuPanel .item{padding:0}
-.x{border:0;background:none;color:var(--jade);padding:7px 8px;line-height:1.3;font-size:14px;font-weight:500;white-space:nowrap}
+.x{border:0;background:none;color:var(--jade);padding:7px 8px;margin-right:-8px;line-height:1.3;font-size:14px;font-weight:500;white-space:nowrap}
 .item{display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
 .item:last-child{border-bottom:0}
 .name{flex:1;min-width:0;overflow-wrap:anywhere}
@@ -82,9 +83,10 @@ section{display:flex;flex-direction:column;gap:14px}
 .s-n,.seg button[data-s="n"][aria-pressed="true"]{background:var(--no-bg);color:var(--no-fg);border-color:transparent}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .mgrp{display:flex;flex-direction:column;gap:6px}
-.srow{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:6px 0;border-bottom:1px solid var(--line)}
+.srow{display:flex;flex-direction:column;gap:4px;padding:6px 0;border-bottom:1px solid var(--line)}
+.srow:last-of-type{border-bottom:0}
 .srow b{overflow-wrap:anywhere;font-size:15px}
-.srow .chips{gap:4px;flex:1 1 auto}
+.srow .chips{gap:4px}
 .srow .mchip{padding:1px 9px;font-size:13px}
 .mrow2{display:flex;flex-wrap:wrap;gap:0 8px;align-items:baseline;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:16px;padding:6px 12px;text-align:left;width:100%;font-size:15px}
 .mrow2.over{background:var(--no-bg);color:var(--no-fg);border-color:transparent}
@@ -99,11 +101,11 @@ section{display:flex;flex-direction:column;gap:14px}
 .mchip{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:4px 12px;font-size:14px;font-weight:500;text-align:left}
 .mchip.over{background:var(--no-bg);color:var(--no-fg);border-color:transparent}
 .mchip small{font-weight:400;opacity:.85}
-.okline{color:var(--ok-fg);background:var(--ok-bg);border-radius:14px;padding:8px 12px;font-weight:500}
+.okline{color:var(--ok-fg);background:var(--ok-bg);border-radius:14px;padding:6px 12px;font-weight:500;font-size:14px}
 .chip{border-radius:999px;padding:3px 12px;font-size:14px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
 .due{font-weight:500}
 .scroll{overflow-x:auto;margin-inline:-4px;padding-inline:4px}
-table{border-collapse:separate;border-spacing:0;font-size:14px}
+table{border-collapse:separate;border-spacing:0;font-size:14px;width:100%}
 th,td{padding:6px 6px;border-bottom:1px solid var(--line);text-align:center;vertical-align:middle}
 tbody tr:last-child td,tbody tr:last-child th{border-bottom:0}
 thead th{font-weight:500;color:var(--muted);vertical-align:bottom;white-space:nowrap}
@@ -116,13 +118,13 @@ th.stu{position:sticky;left:0;background:var(--surface);text-align:left;white-sp
 dialog{border:1px solid var(--line);border-radius:22px;background:var(--surface);color:var(--fg);padding:20px;width:min(400px,calc(100vw - 32px))}
 #fab{position:fixed;z-index:8;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));
   border:0;border-radius:999px;background:var(--accent);color:var(--accent-fg);font-weight:700;font-size:17px;padding:14px 26px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
-#missDlg{width:min(560px,calc(100vw - 24px));max-height:85vh;overflow:auto;padding:18px 16px}
+#missDlg{width:min(560px,calc(100vw - 24px));max-height:85vh;overflow:auto;padding:14px}
 #missDlg[open]{display:flex;flex-direction:column;gap:12px}
 #missPanel,#markPanel{display:flex;flex-direction:column;gap:14px}
 .both{display:flex;gap:6px;align-items:center;font-size:15px;margin-left:auto}
 .both input{width:18px;height:18px;accent-color:var(--jade);flex:none;margin:0}
-#hwAddPanel{padding:12px;gap:8px}
-#hwAddPanel .cls button{padding:3px 0;font-size:15px}
+#hwAddPanel{gap:8px}
+.panel .cls button,#subjSel2 button{padding:4px 0;font-size:15px}
 #hwAddPanel .f{padding:4px 12px}
 #hwAddPanel .btn{padding:6px 18px}
 dialog::backdrop{background:rgba(0,0,0,.45)}
