@@ -70,7 +70,6 @@ section{display:flex;flex-direction:column;gap:14px}
 .x{border:0;background:none;color:var(--jade);padding:4px 6px;font-size:13px;font-weight:500;white-space:nowrap}
 .item{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
 .item:last-child{border-bottom:0}
-.seat{color:var(--muted);font-variant-numeric:tabular-nums;min-width:1.6em;text-align:right;flex:none}
 .name{flex:1;min-width:0;overflow-wrap:anywhere}
 .cur{font-size:12px;background:var(--jade-soft);border-radius:999px;padding:1px 8px;margin-left:6px;white-space:nowrap}
 .seg{display:flex;gap:4px;flex:none}
@@ -97,7 +96,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 dialog form{display:flex;flex-direction:column;gap:12px}
 dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
 dialog h2{color:var(--fg);font-size:18px;font-weight:700}
-@media (max-width:420px){ .mark .item{flex-wrap:wrap} .mark .seg{width:100%;padding-left:calc(1.6em + 10px)} .mark .seg button{flex:1} }
+@media (max-width:420px){ .mark .item{flex-wrap:wrap} .mark .seg{width:100%} .mark .seg button{flex:1} }
 </style>
 
 <div class="wrap">
@@ -144,7 +143,7 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
   <section id="roster" hidden>
     <div class="panel" id="stuAddPanel">
       <h2 id="stuAddTitle">加入學生</h2>
-      <textarea id="stuList" class="f" placeholder="一行一位。&#10;可以寫「5 王小明」指定座號，&#10;只寫姓名會自動接著排座號。" aria-label="學生名單"></textarea>
+      <textarea id="stuList" class="f" placeholder="一行一位，照你貼的順序排列。" aria-label="學生名單"></textarea>
       <div class="row"><span class="grow"></span><button class="btn primary" id="stuAdd">加入名單</button></div>
     </div>
     <div class="panel" id="stuPanel"></div>
@@ -177,7 +176,7 @@ const uid = () => Math.random().toString(36).slice(2, 8) + Date.now().toString(3
 /* 狀態代碼：o 準時、l 遲交、m 補交；沒有記錄就是未交（n） */
 const ST = [['o','準時','準'],['l','遲交','遲'],['m','補交','補'],['n','未交','缺']];
 
-/* 資料：每個班級是一筆 { name, order, students:[{id,seat,name}], subjects:[{id,name,hw:[{id,title,due,rec:{學生id:代碼}}]}] } */
+/* 資料：每個班級是一筆 { name, order, students:[{id,name}], subjects:[{id,name,hw:[{id,title,due,rec:{學生id:代碼}}]}] } */
 let classes = {};
 let mode = 'loading';              // loading | cloud | local
 let db = null;
@@ -200,7 +199,7 @@ const ensure = obj => {
 const C = () => classes[cur.c] || null;
 const S = () => { const c = C(); return c ? c.subjects.find(s => s.id === cur.s) || null : null; };
 const H = () => { const s = S(); return s ? s.hw.find(h => h.id === cur.h) || null : null; };
-const students = c => [...c.students].sort((a, b) => a.seat - b.seat || a.name.localeCompare(b.name));
+const students = c => c.students;   // 照加入的順序
 const fmtDue = d => d ? Number(d.slice(5, 7)) + '/' + Number(d.slice(8, 10)) : '';
 /* 期限只選月和日；年份自動取離今天最近的那一年，用來判斷過期了沒 */
 function fillMD(m, d, value){
@@ -394,7 +393,7 @@ function render(){
           b.onclick = () => { if (k === 'n') delete h.rec[st.id]; else h.rec[st.id] = k; touch(cur.c); };
           seg.append(b);
         });
-        box.append(el('div', {className: 'item'}, el('span', {className: 'seat', textContent: st.seat}), el('span', {className: 'name', textContent: st.name}), seg));
+        box.append(el('div', {className: 'item'}, el('span', {className: 'name', textContent: st.name}), seg));
       });
       mp.append(el('div', {className: 'row'}, all), box);
     }
@@ -413,7 +412,7 @@ function render(){
     const body = el('tbody');
     students(c).forEach(st => {
       const miss = s.hw.filter(x => !x.rec[st.id]).length;
-      const tr = el('tr', {}, el('th', {className: 'stu'}, el('span', {className: 'seat', textContent: st.seat + ' '}), st.name),
+      const tr = el('tr', {}, el('th', {className: 'stu', textContent: st.name}),
         el('td', {className: 'miss', textContent: miss || ''}));
       s.hw.forEach(x => { const k = x.rec[st.id] || 'n'; tr.append(el('td', {}, el('span', {className: 'cell s-' + k, textContent: ST.find(t => t[0] === k)[2]}))); });
       body.append(tr);
@@ -432,12 +431,12 @@ function render(){
       const b = el('button', {className: 'x', textContent: '編輯'});
       b.onclick = () => openEdit({
         title: '編輯學生',
-        fields: [{key: 'seat', label: '座號', type: 'number', value: st.seat}, {key: 'name', label: '姓名', value: st.name}],
+        fields: [{key: 'name', label: '姓名', value: st.name}],
         note: `會刪除「${st.name}」和這位學生在 ${c.name} 所有科目的繳交記錄。`,
-        onSave: v => { st.seat = parseInt(v.seat, 10) || 0; st.name = v.name; touch(cur.c); },
+        onSave: v => { st.name = v.name; touch(cur.c); },
         onDelete: () => { c.students = c.students.filter(x => x !== st); c.subjects.forEach(x => x.hw.forEach(y => delete y.rec[st.id])); touch(cur.c); }
       });
-      sp.append(el('div', {className: 'item'}, el('span', {className: 'seat', textContent: st.seat}), el('span', {className: 'name', textContent: st.name}), b));
+      sp.append(el('div', {className: 'item'}, el('span', {className: 'name', textContent: st.name}), b));
     });
   }
 }
@@ -446,12 +445,9 @@ function render(){
 const need = input => { if (!input.value.trim()){ input.focus(); return null; } return input.value.trim(); };
 $('stuAdd').onclick = () => {
   const c = C(), text = need($('stuList')); if (!c || !text) return;
-  let next = Math.max(0, ...c.students.map(s => s.seat)) + 1;
   text.split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
-    const m = line.match(/^(\d+)[\s,，、.．:：]*(\S.*)$/);
-    const seat = m ? Number(m[1]) : next;
-    c.students.push({id: 'p' + uid(), seat, name: m ? m[2].trim() : line});
-    next = Math.max(next, seat + 1);
+    const m = line.match(/^\d+[\s,，、.．:：]*(\S.*)$/);      // 名單前面若帶號碼就去掉
+    c.students.push({id: 'p' + uid(), name: m ? m[1].trim() : line});
   });
   $('stuList').value = ''; touch(cur.c);
 };
