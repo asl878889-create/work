@@ -150,6 +150,7 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
       </div>
       <label class="both"><input type="checkbox" id="hwBoth"><span id="hwBothLbl"></span></label>
     </div>
+    <div class="cls" id="subjSel3" role="group" aria-label="科目"></div>
     <div class="panel" id="markPanel"></div>
   </section>
 
@@ -374,8 +375,8 @@ function render(){
     b.onclick = () => { cur = {c: id, s: null, v: cur.v, h: null}; render(); };
     return b;
   }));
-  ['subjSel', 'subjSel2'].forEach(id => $(id).replaceChildren(...(c ? c.subjects : []).map(x => {
-    const k = id === 'subjSel' ? 's' : 'v';
+  ['subjSel', 'subjSel2', 'subjSel3'].forEach(id => $(id).replaceChildren(...(c ? c.subjects : []).map(x => {
+    const k = id === 'subjSel2' ? 'v' : 's';
     const b = el('button', {textContent: x.name}); b.setAttribute('aria-pressed', x.id === cur[k]);
     b.onclick = () => { cur[k] = x.id; if (k === 's') cur.h = null; render(); };
     return b;
