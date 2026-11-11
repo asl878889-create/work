@@ -55,7 +55,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .cls button[aria-pressed="true"]{background:var(--jade);color:var(--surface);border-color:var(--jade)}
 .f{border:1px solid var(--line);border-radius:999px;padding:8px 14px;background:var(--surface);color:var(--fg);min-width:0;max-width:100%}
 textarea.f{border-radius:18px;min-height:2.6em;resize:vertical}
-.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;position:sticky;top:env(safe-area-inset-top,0px);
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;position:sticky;top:env(safe-area-inset-top,0px);
   background:var(--bg);padding-block:8px;z-index:5}
 .tab{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 0;font-weight:500;font-size:15px;min-width:0;white-space:nowrap}
 .tab[aria-selected="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
@@ -79,6 +79,15 @@ section{display:flex;flex-direction:column;gap:14px}
 .s-m,.seg button[data-s="m"][aria-pressed="true"]{background:var(--mk-bg);color:var(--mk-fg);border-color:transparent}
 .s-n,.seg button[data-s="n"][aria-pressed="true"]{background:var(--no-bg);color:var(--no-fg);border-color:transparent}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
+.mrow{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-bottom:1px solid var(--line)}
+.mrow:last-child{border-bottom:0}
+.mhead{display:flex;gap:8px;align-items:baseline}
+.mhead b{font-size:17px}
+.mcount{font-variant-numeric:tabular-nums;font-weight:700;color:var(--no-fg)}
+.mchip{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:4px 12px;font-size:14px;font-weight:500;text-align:left}
+.mchip.over{background:var(--no-bg);color:var(--no-fg);border-color:transparent}
+.mchip small{font-weight:400;opacity:.85}
+.okline{color:var(--ok-fg);background:var(--ok-bg);border-radius:14px;padding:8px 12px;font-weight:500}
 .chip{border-radius:999px;padding:3px 12px;font-size:14px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
 .due{font-weight:500}
 .scroll{overflow-x:auto;margin-inline:-4px;padding-inline:4px}
@@ -111,12 +120,18 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
   </div>
 
   <div class="tabs" role="tablist">
-    <button class="tab" role="tab" data-tab="mark" aria-selected="true">登記</button>
+    <button class="tab" role="tab" data-tab="miss" aria-selected="true">缺交</button>
+    <button class="tab" role="tab" data-tab="mark" aria-selected="false">登記</button>
     <button class="tab" role="tab" data-tab="all" aria-selected="false">總覽</button>
     <button class="tab" role="tab" data-tab="roster" aria-selected="false">名單</button>
   </div>
 
-  <section id="mark" class="mark">
+  <section id="miss">
+    <div class="panel" id="missPanel"></div>
+    <p class="note">紅色是已經過期限的，白色是還沒到期或沒設期限的。點一下可以直接去登記那份作業。</p>
+  </section>
+
+  <section id="mark" class="mark" hidden>
     <div class="panel" id="hwAddPanel">
       <h2>出一份新作業</h2>
       <div class="row">
@@ -276,13 +291,13 @@ function norm(c){
 }
 
 /* ---------- 分頁與配色 ---------- */
-const TABS = ['mark', 'all', 'roster'];
+const TABS = ['miss', 'mark', 'all', 'roster'];
 const tabs = [...document.querySelectorAll('.tab')];
 function showTab(name){
-  if (!TABS.includes(name)) name = 'mark';
+  if (!TABS.includes(name)) name = 'miss';
   tabs.forEach(t => t.setAttribute('aria-selected', t.dataset.tab === name));
   TABS.forEach(id => $(id).hidden = id !== name);
-  store.set('hw-tab', name);
+  store.set('hw-tab2', name);
 }
 tabs.forEach(t => t.onclick = () => showTab(t.dataset.tab));
 
@@ -399,6 +414,44 @@ function render(){
     }
   }
 
+  /* 缺交：這一班四個科目合在一起看 */
+  const qp = $('missPanel'); qp.replaceChildren();
+  const now = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const hwTotal = c.subjects.reduce((n, x) => n + x.hw.length, 0);
+  if (!c.students.length) qp.append(el('h2', {textContent: c.name + ' 還沒有學生'}), hint('加入學生之後，這裡會列出每個人還沒交的作業。'), el('div', {className: 'row'}, jump('去加入學生', 'roster')));
+  else if (!hwTotal) qp.append(el('h2', {textContent: c.name + ' 還沒有作業'}), hint('出了作業之後，這裡會列出每個人還沒交的作業，四個科目合在一起看。'), el('div', {className: 'row'}, jump('去出作業', 'mark')));
+  else {
+    const rows = students(c).map(st => {
+      const list = [];
+      c.subjects.forEach(x => x.hw.forEach(y => { if (!y.rec[st.id]) list.push({x, y, over: !!y.due && y.due < now}); }));
+      list.sort((a, b) => (b.over - a.over) || (a.y.due || '9').localeCompare(b.y.due || '9'));
+      return {st, list, over: list.filter(i => i.over).length};
+    });
+    const lacking = rows.filter(r => r.list.length).sort((a, b) => (b.over - a.over) || (b.list.length - a.list.length));
+    const done = rows.filter(r => !r.list.length);
+    const total = lacking.reduce((n, r) => n + r.list.length, 0), overdue = lacking.reduce((n, r) => n + r.over, 0);
+    qp.append(el('h2', {textContent: `${c.name} 全部科目`}),
+      el('div', {className: 'chips'},
+        el('span', {className: 'chip s-n', textContent: `過期未交 ${overdue} 份`}),
+        el('span', {className: 'chip', style: 'border:1px solid var(--line)', textContent: `還沒交 ${total} 份`}),
+        el('span', {className: 'chip s-o', textContent: `交齊 ${done.length} 位`})));
+    const box = el('div');
+    lacking.forEach(r => {
+      const chips = el('div', {className: 'chips'});
+      r.list.forEach(({x, y, over}) => {
+        const b = el('button', {className: 'mchip' + (over ? ' over' : '')}, `${x.name}・${y.title}`);
+        if (y.due) b.append(' ', el('small', {textContent: fmtDue(y.due)}));
+        b.onclick = () => { cur.s = x.id; cur.h = y.id; render(); showTab('mark'); };
+        chips.append(b);
+      });
+      box.append(el('div', {className: 'mrow'},
+        el('div', {className: 'mhead'}, el('b', {textContent: r.st.name}), el('span', {className: 'mcount', textContent: r.over ? `過期 ${r.over} 份` : ''}), el('span', {className: 'note', textContent: `共 ${r.list.length} 份沒交`})),
+        chips));
+    });
+    qp.append(box);
+    if (done.length) qp.append(el('div', {className: 'okline', textContent: '全部交齊：' + done.map(r => r.st.name).join('、')}));
+  }
+
   /* 總覽 */
   const ap = $('allPanel'); ap.replaceChildren();
   if (!s || !s.hw.length || !c.students.length) ap.append(hint('有學生名單和至少一份作業之後，這裡會列出每位學生每份作業的繳交狀況，以及各自缺交幾份。'));
@@ -461,6 +514,6 @@ $('hwAdd').onclick = () => {
 const dueToday = () => { const n = new Date(); $('hwM').value = n.getMonth() + 1; $('hwD').value = n.getDate(); };   // 期限預設今天
 fillMD($('hwM'), $('hwD'), ''); dueToday();
 setPal(store.get('hw-pal', null));
-showTab(store.get('hw-tab', 'mark'));
+showTab(store.get('hw-tab2', 'miss'));
 boot();
 </script>
