@@ -130,14 +130,13 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
 
   <section id="miss">
     <div class="panel" id="missPanel"></div>
-    <p class="note">紅色是已經過期限的，白色是還沒到期或沒設期限的。點一下可以直接去登記那份作業。</p>
   </section>
 
   <section id="mark" class="mark" hidden>
     <div class="panel" id="hwAddPanel">
       <h2>出一份新作業</h2>
       <div class="row">
-        <input id="hwTitle" class="f grow" type="text" placeholder="作業名稱，例如：習作第 3 課" aria-label="作業名稱">
+        <input id="hwTitle" class="f grow" type="text" placeholder="作業名稱" aria-label="作業名稱">
       </div>
       <div class="row">
         <span class="note">繳交期限</span>
@@ -151,11 +150,7 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
   </section>
 
   <section id="all" hidden>
-    <div class="chips">
-      <span class="chip s-o">準 準時</span><span class="chip s-l">遲 遲交</span><span class="chip s-m">補 補交</span><span class="chip s-n">缺 未交</span>
-    </div>
     <div class="panel" id="allPanel"></div>
-    <p class="note">點作業名稱可以跳到「登記」修改那一份作業。</p>
   </section>
 
   <section id="roster" hidden>
@@ -259,18 +254,18 @@ async function flush(id){
   } catch (e) { failed.add(id); }
   busy.delete(id);
   if (dirty.has(id)) return flush(id);
-  if (failed.size) setSync('有變更沒有存到雲端，請確認網路。', true);
-  else if (!dirty.size && !busy.size) setSync('已儲存，換手機或電腦開啟都看得到。');
+  if (failed.size) setSync('沒存到，請確認網路。', true);
+  else if (!dirty.size && !busy.size) setSync('已儲存');
 }
 function useLocal(why){
   if (mode === 'local') return;
   mode = 'local'; classes = ensure(store.get('hw-local', {}));
-  setSync(why + '目前的記錄只會存在這台裝置的瀏覽器。', true); render();
+  setSync(why + '記錄只存在這台裝置。', true); render();
 }
 async function boot(){
-  const giveUp = setTimeout(() => useLocal('連不上雲端資料。'), 10000);
+  const giveUp = setTimeout(() => useLocal('連不上雲端。'), 10000);
   try { db = window.claude && window.claude.use ? await window.claude.use('db') : null; } catch (e) { db = null; }
-  if (!db){ clearTimeout(giveUp); return useLocal('沒有登入，或這不是你的頁面。'); }
+  if (!db){ clearTimeout(giveUp); return useLocal('未登入。'); }
   db.collection('classes').onSnapshot(snap => {
     clearTimeout(giveUp);
     if (mode === 'local') return;
@@ -281,9 +276,9 @@ async function boot(){
     const first = mode !== 'cloud', same = JSON.stringify(next) === JSON.stringify(classes);
     if (first || !same) classes = next;
     mode = 'cloud';
-    if (first) setSync('已連上雲端，換手機或電腦開啟都看得到。');
+    if (first) setSync('');
     if (first || !same) render();
-  }, () => { clearTimeout(giveUp); useLocal('只有這個頁面的擁有者可以讀寫雲端記錄。'); });
+  }, () => { clearTimeout(giveUp); useLocal('不是擁有者。'); });
 }
 function norm(c){
   c.students = Array.isArray(c.students) ? c.students : [];
@@ -340,7 +335,7 @@ function openEdit({title, fields, note, onSave, onDelete}){
 $('dlgForm').onsubmit = e => { e.preventDefault(); dlgSave(); $('dlg').close(); };
 $('dlgCancel').onclick = () => $('dlg').close();
 $('dlgDel').onclick = () => {
-  if (!delArmed){ delArmed = true; $('dlgDel').textContent = '確定刪除'; $('dlgNote').textContent = $('dlgDel').dataset.note + '刪掉就救不回來，確定的話再按一次。'; return; }
+  if (!delArmed){ delArmed = true; $('dlgDel').textContent = '確定刪除'; $('dlgNote').textContent = $('dlgDel').dataset.note + '無法復原，再按一次確定。'; return; }
   dlgDelete(); $('dlg').close();
 };
 
@@ -375,7 +370,7 @@ function render(){
   const mp = $('markPanel'); mp.replaceChildren();
   if (!c) return;
   if (!s) return;
-  if (!h) mp.append(el('h2', {textContent: '還沒有作業'}), hint(`在上面輸入作業名稱和期限，按「加入」，就能登記 ${c.name}「${s.name}」的繳交狀況。`));
+  if (!h) mp.append(el('h2', {textContent: '還沒有作業'}), hint('在上面加入第一份作業。'));
   else {
     const list = students(c);
     const sel = el('select', {className: 'f grow', id: 'hwSel'});
@@ -397,7 +392,7 @@ function render(){
     mp.append(el('div', {className: 'row'}, sel, edit),
       el('div', {className: 'due', textContent: dueText}),
       el('div', {className: 'chips'}, ...ST.map(([k, label]) => el('span', {className: 'chip s-' + k, textContent: `${label} ${n[k]}`}))));
-    if (!list.length) mp.append(hint('這個班級還沒有學生。'), el('div', {className: 'row'}, jump('去加入學生', 'roster')));
+    if (!list.length) mp.append(el('div', {className: 'row'}, jump('去加入學生', 'roster')));
     else {
       const all = el('button', {className: 'btn', textContent: `未交的 ${n.n} 位全部設為準時`, disabled: !n.n});
       all.onclick = () => { list.forEach(st => { if (!h.rec[st.id]) h.rec[st.id] = 'o'; }); touch(cur.c); };
@@ -420,8 +415,8 @@ function render(){
   const qp = $('missPanel'); qp.replaceChildren();
   const now = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const hwTotal = c.subjects.reduce((n, x) => n + x.hw.length, 0);
-  if (!c.students.length) qp.append(el('h2', {textContent: c.name + ' 還沒有學生'}), hint('加入學生之後，這裡會列出每個人還沒交的作業。'), el('div', {className: 'row'}, jump('去加入學生', 'roster')));
-  else if (!hwTotal) qp.append(el('h2', {textContent: c.name + ' 還沒有作業'}), hint('出了作業之後，這裡會列出每個人還沒交的作業，四個科目合在一起看。'), el('div', {className: 'row'}, jump('去出作業', 'mark')));
+  if (!c.students.length) qp.append(el('h2', {textContent: c.name + ' 還沒有學生'}), el('div', {className: 'row'}, jump('去加入學生', 'roster')));
+  else if (!hwTotal) qp.append(el('h2', {textContent: c.name + ' 還沒有作業'}), el('div', {className: 'row'}, jump('去出作業', 'mark')));
   else {
     const rows = students(c).map(st => {
       const list = [];
@@ -447,7 +442,7 @@ function render(){
         chips.append(b);
       });
       box.append(el('div', {className: 'mrow'},
-        el('div', {className: 'mhead'}, el('b', {textContent: r.st.name}), el('span', {className: 'mcount', textContent: r.over ? `過期 ${r.over} 份` : ''}), el('span', {className: 'note', textContent: `共 ${r.list.length} 份沒交`})),
+        el('div', {className: 'mhead'}, el('b', {textContent: r.st.name}), el('span', {className: 'mcount', textContent: r.over ? `過期 ${r.over} 份` : ''}), el('span', {className: 'note', textContent: `${r.list.length} 份`})),
         chips));
     });
     qp.append(box);
@@ -456,7 +451,7 @@ function render(){
 
   /* 總覽 */
   const ap = $('allPanel'); ap.replaceChildren();
-  if (!s || !s.hw.length || !c.students.length) ap.append(hint('有學生名單和至少一份作業之後，這裡會列出每位學生每份作業的繳交狀況，以及各自缺交幾份。'));
+  if (!s || !s.hw.length || !c.students.length) ap.append(hint('還沒有資料。'));
   else {
     const head = el('tr', {}, el('th', {className: 'stu', textContent: '學生'}), el('th', {textContent: '缺交'}));
     s.hw.forEach(x => {
@@ -481,7 +476,7 @@ function render(){
   {
     $('stuAddTitle').textContent = '加入學生到 ' + c.name;
     sp.append(el('h2', {textContent: `${c.name} 共 ${c.students.length} 位`}));
-    if (!c.students.length) sp.append(hint('還沒有學生。把名單貼在上面，一行一位。'));
+    if (!c.students.length) 
     students(c).forEach(st => {
       const b = el('button', {className: 'x', textContent: '編輯'});
       b.onclick = () => openEdit({
