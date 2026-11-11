@@ -409,7 +409,7 @@ function render(){
     if (!list.length) mp.append(el('div', {className: 'row'}, jump('去加入學生', 'roster')));
     else {
       const undo = !n.n && lastBulk && lastBulk.h === h.id;
-      const all = el('button', {className: 'btn', textContent: undo ? '取消全部設為準時' : `未交的 ${n.n} 位全部設為準時`, disabled: !n.n && !undo});
+      const all = el('button', {className: 'btn', textContent: undo ? '全部設為未交' : `未交的 ${n.n} 位全部設為準時`, disabled: !n.n && !undo});
       all.onclick = () => {
         if (undo){ lastBulk.ids.forEach(id => { if (h.rec[id] === 'o') delete h.rec[id]; }); lastBulk = null; }
         else { const ids = list.filter(st => !h.rec[st.id]).map(st => st.id); ids.forEach(id => { h.rec[id] = 'o'; }); lastBulk = {h: h.id, ids}; }
