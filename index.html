@@ -408,7 +408,7 @@ function render(){
     if (!list.length) mp.append(el('div', {className: 'row'}, jump('去加入學生', 'roster')));
     else {
       const clear = !n.n;                // 全部都交了就變成「全部設為未交」
-      const all = el('button', {className: 'btn', textContent: clear ? '全部設為未交' : `未交的 ${n.n} 位全部設為準時`});
+      const all = el('button', {className: 'btn', textContent: clear ? '全部設為未交' : '全部設為準時'});
       all.onclick = () => {
         if (clear) list.forEach(st => { delete h.rec[st.id]; });
         else list.forEach(st => { if (!h.rec[st.id]) h.rec[st.id] = 'o'; });
