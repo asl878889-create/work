@@ -35,7 +35,7 @@
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.6}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
-.wrap{max-width:600px;margin:0 auto;padding-block:20px 48px;
+.wrap{max-width:600px;margin:0 auto;padding-block:20px 104px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   display:flex;flex-direction:column;gap:16px}
 h1{font-size:24px;margin:0;line-height:1.2;text-wrap:balance}
@@ -55,7 +55,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .cls button[aria-pressed="true"]{background:var(--jade);color:var(--surface);border-color:var(--jade)}
 .f{border:1px solid var(--line);border-radius:999px;padding:8px 14px;background:var(--surface);color:var(--fg);min-width:0;max-width:100%}
 textarea.f{border-radius:18px;min-height:2.6em;resize:vertical}
-.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;position:sticky;top:env(safe-area-inset-top,0px);
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;position:sticky;top:env(safe-area-inset-top,0px);
   background:var(--bg);padding-block:8px;z-index:5}
 .tab{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 0;font-weight:500;font-size:15px;min-width:0;white-space:nowrap}
 .tab[aria-selected="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
@@ -104,6 +104,11 @@ th.stu{position:sticky;left:0;background:var(--surface);text-align:left;white-sp
 .cell{display:inline-block;min-width:2.2em;border-radius:999px;padding:1px 0;font-weight:500}
 .miss{font-variant-numeric:tabular-nums;font-weight:700}
 dialog{border:1px solid var(--line);border-radius:22px;background:var(--surface);color:var(--fg);padding:20px;width:min(400px,calc(100vw - 32px))}
+#fab{position:fixed;z-index:8;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));
+  border:0;border-radius:999px;background:var(--accent);color:var(--accent-fg);font-weight:700;font-size:17px;padding:14px 26px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+#missDlg{width:min(560px,calc(100vw - 24px));max-height:85vh;overflow:auto;padding:18px 16px}
+#missDlg[open]{display:flex;flex-direction:column;gap:12px}
+#missPanel{display:flex;flex-direction:column;gap:12px}
 dialog::backdrop{background:rgba(0,0,0,.45)}
 dialog form{display:flex;flex-direction:column;gap:12px}
 dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
@@ -122,17 +127,12 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
   </div>
 
   <div class="tabs" role="tablist">
-    <button class="tab" role="tab" data-tab="miss" aria-selected="true">缺交</button>
-    <button class="tab" role="tab" data-tab="mark" aria-selected="false">登記</button>
+    <button class="tab" role="tab" data-tab="mark" aria-selected="true">登記</button>
     <button class="tab" role="tab" data-tab="all" aria-selected="false">總覽</button>
     <button class="tab" role="tab" data-tab="roster" aria-selected="false">名單</button>
   </div>
 
-  <section id="miss">
-    <div class="panel" id="missPanel"></div>
-  </section>
-
-  <section id="mark" class="mark" hidden>
+  <section id="mark" class="mark">
     <div class="panel" id="hwAddPanel">
       <h2>出一份新作業</h2>
       <div class="row">
@@ -164,6 +164,12 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
     <div class="panel" id="stuPanel"></div>
   </section>
 </div>
+
+<button id="fab" aria-haspopup="dialog">缺交</button>
+<dialog id="missDlg" aria-label="缺交">
+  <div id="missPanel"></div>
+  <div class="row"><span class="grow"></span><button class="btn" id="missClose">關閉</button></div>
+</dialog>
 
 <dialog id="dlg">
   <form id="dlgForm">
@@ -288,10 +294,10 @@ function norm(c){
 }
 
 /* ---------- 分頁與配色 ---------- */
-const TABS = ['miss', 'mark', 'all', 'roster'];
+const TABS = ['mark', 'all', 'roster'];
 const tabs = [...document.querySelectorAll('.tab')];
 function showTab(name){
-  if (!TABS.includes(name)) name = 'miss';
+  if (!TABS.includes(name)) name = 'mark';
   tabs.forEach(t => t.setAttribute('aria-selected', t.dataset.tab === name));
   TABS.forEach(id => $(id).hidden = id !== name);
   store.set('hw-tab2', name);
@@ -341,7 +347,7 @@ $('dlgDel').onclick = () => {
 
 /* ---------- 畫面 ---------- */
 const hint = text => el('p', {className: 'note', textContent: text});
-const jump = (text, tab) => { const b = el('button', {className: 'btn', textContent: text}); b.onclick = () => showTab(tab); return b; };
+const jump = (text, tab) => { const b = el('button', {className: 'btn', textContent: text}); b.onclick = () => { $('missDlg').close(); showTab(tab); }; return b; };
 
 function render(){
   if (mode === 'loading') return;
@@ -438,7 +444,7 @@ function render(){
       r.list.forEach(({x, y, over}) => {
         const b = el('button', {className: 'mchip' + (over ? ' over' : '')}, `${x.name}・${y.title}`);
         if (y.due) b.append(' ', el('small', {textContent: fmtDue(y.due)}));
-        b.onclick = () => { cur.s = x.id; cur.h = y.id; render(); showTab('mark'); };
+        b.onclick = () => { cur.s = x.id; cur.h = y.id; $('missDlg').close(); render(); showTab('mark'); };
         chips.append(b);
       });
       box.append(el('div', {className: 'mrow'},
@@ -511,6 +517,9 @@ $('hwAdd').onclick = () => {
 const dueToday = () => { const n = new Date(); $('hwM').value = n.getMonth() + 1; $('hwD').value = n.getDate(); };   // 期限預設今天
 fillMD($('hwM'), $('hwD'), ''); dueToday();
 setPal(store.get('hw-pal', null));
-showTab(store.get('hw-tab2', 'miss'));
+showTab(store.get('hw-tab2', 'mark'));
+$('fab').onclick = () => $('missDlg').showModal();
+$('missClose').onclick = () => $('missDlg').close();
+$('missDlg').onclick = e => { if (e.target === $('missDlg')) $('missDlg').close(); };
 boot();
 </script>
