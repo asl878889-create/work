@@ -54,7 +54,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .cls button{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:8px 0;font-size:16px;font-weight:700}
 .cls button[aria-pressed="true"]{background:var(--jade);color:var(--surface);border-color:var(--jade)}
 .f{border:1px solid var(--line);border-radius:999px;padding:8px 14px;background:var(--surface);color:var(--fg);min-width:0;max-width:100%}
-textarea.f{border-radius:18px;width:100%;min-height:8em;resize:vertical}
+textarea.f{border-radius:18px;min-height:2.6em;resize:vertical}
 .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;position:sticky;top:env(safe-area-inset-top,0px);
   background:var(--bg);padding-block:8px;z-index:5}
 .tab{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 0;font-weight:500;font-size:15px;min-width:0;white-space:nowrap}
@@ -143,8 +143,10 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
   <section id="roster" hidden>
     <div class="panel" id="stuAddPanel">
       <h2 id="stuAddTitle">加入學生</h2>
-      <textarea id="stuList" class="f" placeholder="一行一位，加入後會按字母順序排列。" aria-label="學生名單"></textarea>
-      <div class="row"><span class="grow"></span><button class="btn primary" id="stuAdd">加入名單</button></div>
+      <div class="row">
+        <textarea id="stuList" class="f grow" rows="1" placeholder="姓名，多位請一行一位" aria-label="學生名單"></textarea>
+        <button class="btn primary" id="stuAdd">加入</button>
+      </div>
     </div>
     <div class="panel" id="stuPanel"></div>
   </section>
