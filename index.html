@@ -49,7 +49,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .note{font-size:13px;color:var(--muted);margin:0}
 .note.warn{color:var(--no-fg);background:var(--no-bg);border-radius:14px;padding:8px 12px}
 .pick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.pick label{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px;min-width:0}
+.pick label,.pick .lbl{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px;min-width:0}
+.cls{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cls button{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:8px 0;font-size:16px;font-weight:700}
+.cls button[aria-pressed="true"]{background:var(--jade);color:var(--surface);border-color:var(--jade)}
 .f{border:1px solid var(--line);border-radius:999px;padding:8px 14px;background:var(--surface);color:var(--fg);min-width:0;max-width:100%}
 textarea.f{border-radius:18px;width:100%;min-height:8em;resize:vertical}
 .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;position:sticky;top:env(safe-area-inset-top,0px);
@@ -103,7 +106,7 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
   <p class="note" id="sync">讀取中…</p>
 
   <div class="pick">
-    <label for="classSel">班級<select id="classSel" class="f"></select></label>
+    <div class="lbl">班級<div class="cls" id="classSel" role="group" aria-label="班級"></div></div>
     <label for="subjSel">科目<select id="subjSel" class="f"></select></label>
   </div>
 
@@ -111,7 +114,7 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
     <button class="tab" role="tab" data-tab="mark" aria-selected="true">登記</button>
     <button class="tab" role="tab" data-tab="all" aria-selected="false">總覽</button>
     <button class="tab" role="tab" data-tab="roster" aria-selected="false">名單</button>
-    <button class="tab" role="tab" data-tab="setup" aria-selected="false">班級</button>
+    <button class="tab" role="tab" data-tab="setup" aria-selected="false">科目</button>
   </div>
 
   <section id="mark" class="mark">
@@ -147,14 +150,6 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
   </section>
 
   <section id="setup" hidden>
-    <div class="panel">
-      <h2>班級</h2>
-      <div class="row">
-        <input id="clsName" class="f grow" type="text" placeholder="班級名稱，例如：三年二班" aria-label="班級名稱">
-        <button class="btn primary" id="clsAdd">新增班級</button>
-      </div>
-      <div id="clsList"></div>
-    </div>
     <div class="panel" id="subjPanel">
       <h2 id="subjTitle">科目</h2>
       <div class="row">
@@ -199,7 +194,9 @@ let db = null;
 let cur = store.get('hw-cur', {c: null, s: null, h: null});
 const dirty = new Set(), busy = new Set(), failed = new Set(), timers = {};
 
-const clsIds = () => Object.keys(classes).sort((a, b) => (classes[a].order || 0) - (classes[b].order || 0));
+const FIXED = ['5A', '6A'];         // 固定兩個班級
+const clsIds = () => FIXED;
+const ensure = obj => { FIXED.forEach((id, i) => { if (!obj[id]) obj[id] = {name: id, order: i, students: [], subjects: []}; }); return obj; };
 const C = () => classes[cur.c] || null;
 const S = () => { const c = C(); return c ? c.subjects.find(s => s.id === cur.s) || null : null; };
 const H = () => { const s = S(); return s ? s.hw.find(h => h.id === cur.h) || null : null; };
@@ -237,7 +234,7 @@ async function flush(id){
 }
 function useLocal(why){
   if (mode === 'local') return;
-  mode = 'local'; classes = store.get('hw-local', {});
+  mode = 'local'; classes = ensure(store.get('hw-local', {}));
   setSync(why + '目前的記錄只會存在這台裝置的瀏覽器。', true); render();
 }
 async function boot(){
@@ -250,6 +247,7 @@ async function boot(){
     const next = {};
     snap.docs.forEach(d => { const v = d.data(); if (v) next[d.id] = norm(v); });
     [...dirty, ...busy, ...failed].forEach(id => { if (classes[id]) next[id] = classes[id]; else delete next[id]; });
+    ensure(next);
     const first = mode !== 'cloud', same = JSON.stringify(next) === JSON.stringify(classes);
     classes = next; mode = 'cloud';
     if (first) setSync('已連上雲端，換手機或電腦開啟都看得到。');
@@ -329,14 +327,18 @@ function render(){
   const h = s ? H() : null;
   store.set('hw-cur', cur);
 
-  fillSel($('classSel'), ids.map(id => [id, classes[id].name]), cur.c, '還沒有班級');
+  $('classSel').replaceChildren(...ids.map(id => {
+    const b = el('button', {textContent: id}); b.setAttribute('aria-pressed', id === cur.c);
+    b.onclick = () => { cur = {c: id, s: null, h: null}; render(); };
+    return b;
+  }));
   fillSel($('subjSel'), c ? c.subjects.map(x => [x.id, x.name]) : [], cur.s, '還沒有科目');
 
   /* 登記 */
   $('hwAddPanel').hidden = !s;
   const mp = $('markPanel'); mp.replaceChildren();
-  if (!c) mp.append(el('h2', {textContent: '先建立第一個班級'}), hint('到「班級」分頁輸入班級名稱和科目，再到「名單」貼上學生姓名，就可以開始登記作業。'), el('div', {className: 'row'}, jump('去建立班級', 'setup')));
-  else if (!s) mp.append(el('h2', {textContent: c.name + ' 還沒有科目'}), hint('每個科目有自己的作業清單。'), el('div', {className: 'row'}, jump('去新增科目', 'setup')));
+  if (!c) return;
+  if (!s) mp.append(el('h2', {textContent: c.name + ' 還沒有科目'}), hint('先到「科目」分頁新增科目，再到「名單」貼上學生姓名，就可以開始登記作業。'), el('div', {className: 'row'}, jump('去新增科目', 'setup')));
   else if (!h) mp.append(el('h2', {textContent: '還沒有作業'}), hint(`在上面輸入作業名稱和期限，按「加入」，就能登記 ${c.name}「${s.name}」的繳交狀況。`));
   else {
     const list = students(c);
@@ -402,8 +404,7 @@ function render(){
   /* 名單 */
   $('stuAddPanel').hidden = !c;
   const sp = $('stuPanel'); sp.replaceChildren();
-  if (!c) sp.append(hint('先到「班級」分頁建立班級，才能加入學生。'), el('div', {className: 'row'}, jump('去建立班級', 'setup')));
-  else {
+  {
     $('stuAddTitle').textContent = '加入學生到 ' + c.name;
     sp.append(el('h2', {textContent: `${c.name} 共 ${c.students.length} 位`}));
     if (!c.students.length) sp.append(hint('還沒有學生。把名單貼在上面，一行一位。'));
@@ -420,23 +421,7 @@ function render(){
     });
   }
 
-  /* 班級與科目 */
-  const cl = $('clsList'); cl.replaceChildren();
-  if (!ids.length) cl.append(hint('還沒有班級。輸入名稱後按「新增班級」。'));
-  ids.forEach(id => {
-    const x = classes[id];
-    const b = el('button', {className: 'x', textContent: '編輯'});
-    b.onclick = () => openEdit({
-      title: '編輯班級', fields: [{key: 'name', label: '班級名稱', value: x.name}],
-      note: `會刪除「${x.name}」的學生名單、所有科目和繳交記錄。`,
-      onSave: v => { x.name = v.name; touch(id); },
-      onDelete: () => { delete classes[id]; touch(id); }
-    });
-    const nm = el('span', {className: 'name'}, x.name, el('span', {className: 'note', textContent: `　${x.students.length} 位學生・${x.subjects.length} 個科目`}));
-    if (id === cur.c) nm.append(el('span', {className: 'cur', textContent: '目前'}));
-    cl.append(el('div', {className: 'item'}, nm, b));
-  });
-  $('subjPanel').hidden = !c;
+  /* 科目 */
   if (c){
     $('subjTitle').textContent = c.name + ' 的科目';
     const sl = $('subjList'); sl.replaceChildren();
@@ -457,14 +442,8 @@ function render(){
 }
 
 /* ---------- 操作 ---------- */
-$('classSel').onchange = () => { cur = {c: $('classSel').value, s: null, h: null}; render(); };
 $('subjSel').onchange = () => { cur.s = $('subjSel').value; cur.h = null; render(); };
 const need = input => { if (!input.value.trim()){ input.focus(); return null; } return input.value.trim(); };
-$('clsAdd').onclick = () => {
-  const name = need($('clsName')); if (!name || mode === 'loading') return;
-  const id = 'c' + uid(); classes[id] = {name, order: Date.now(), students: [], subjects: []};
-  cur = {c: id, s: null, h: null}; $('clsName').value = ''; touch(id); $('subjName').focus();
-};
 $('subjAdd').onclick = () => {
   const c = C(), name = need($('subjName')); if (!c || !name) return;
   const s = {id: 's' + uid(), name, hw: []}; c.subjects.push(s);
@@ -486,7 +465,7 @@ $('hwAdd').onclick = () => {
   const h = {id: 'h' + uid(), title, due: $('hwDue').value, rec: {}}; s.hw.push(h);
   cur.h = h.id; $('hwTitle').value = ''; touch(cur.c);
 };
-[['clsName','clsAdd'],['subjName','subjAdd'],['hwTitle','hwAdd']].forEach(([i, b]) => $(i).addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) $(b).click(); }));
+[['subjName','subjAdd'],['hwTitle','hwAdd']].forEach(([i, b]) => $(i).addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) $(b).click(); }));
 
 setPal(store.get('hw-pal', null));
 showTab(store.get('hw-tab', 'mark'));
