@@ -109,6 +109,8 @@ dialog{border:1px solid var(--line);border-radius:22px;background:var(--surface)
 #missDlg{width:min(560px,calc(100vw - 24px));max-height:85vh;overflow:auto;padding:18px 16px}
 #missDlg[open]{display:flex;flex-direction:column;gap:12px}
 #missPanel{display:flex;flex-direction:column;gap:12px}
+.both{display:flex;gap:10px;align-items:center;font-size:16px}
+.both input{width:22px;height:22px;accent-color:var(--jade);flex:none}
 dialog::backdrop{background:rgba(0,0,0,.45)}
 dialog form{display:flex;flex-direction:column;gap:12px}
 dialog label{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
@@ -145,6 +147,7 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
         <span class="grow"></span>
         <button class="btn primary" id="hwAdd">加入</button>
       </div>
+      <label class="both"><input type="checkbox" id="hwBoth"><span id="hwBothLbl"></span></label>
     </div>
     <div class="panel" id="markPanel"></div>
   </section>
@@ -376,6 +379,7 @@ function render(){
 
   /* 登記 */
   $('hwAddPanel').hidden = !s;
+  $('hwBothLbl').textContent = '同時加到 ' + FIXED.find(id => id !== cur.c);
   const mp = $('markPanel'); mp.replaceChildren();
   if (!c) return;
   if (!s) return;
@@ -511,7 +515,12 @@ $('stuAdd').onclick = () => {
 };
 $('hwAdd').onclick = () => {
   const s = S(), title = need($('hwTitle')); if (!s || !title) return;
-  const h = {id: 'h' + uid(), title, due: mdValue($('hwM'), $('hwD')), rec: {}}; s.hw.push(h);
+  const due = mdValue($('hwM'), $('hwD'));
+  const h = {id: 'h' + uid(), title, due, rec: {}}; s.hw.push(h);
+  if ($('hwBoth').checked){            // 同一科也加到另一班
+    const oid = FIXED.find(id => id !== cur.c), os = classes[oid] && classes[oid].subjects.find(x => x.id === s.id);
+    if (os){ os.hw.push({id: 'h' + uid(), title, due, rec: {}}); touch(oid); }
+  }
   cur.h = h.id; $('hwTitle').value = ''; dueToday(); touch(cur.c);
 };
 [['hwTitle','hwAdd']].forEach(([i, b]) => $(i).addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) $(b).click(); }));
