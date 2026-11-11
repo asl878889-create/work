@@ -38,9 +38,6 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .wrap{max-width:600px;margin:0 auto;padding-block:12px 104px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   display:flex;flex-direction:column;gap:16px}
-/* 標題旁的小吉祥物 */
-.brand{display:flex;align-items:center;gap:14px}
-.logo{flex:none}
 h1#appTitle{cursor:pointer}
 h1#appTitle::after{content:"✎";font-size:14px;font-weight:400;color:var(--muted);margin-left:8px}
 h1{font-size:24px;margin:0;line-height:1.2;text-wrap:balance}
@@ -139,22 +136,7 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
 </style>
 
 <div class="wrap">
-  <div class="brand">
-    <svg class="logo" width="72" height="72" viewBox="0 0 200 200" aria-hidden="true">
-      <rect x="46" y="26" width="108" height="148" rx="14" fill="#FF8FB1"/>
-      <rect x="46" y="26" width="22" height="148" rx="10" fill="#E8528A"/>
-      <g fill="#fff"><circle cx="57" cy="56" r="4"/><circle cx="57" cy="86" r="4"/><circle cx="57" cy="116" r="4"/><circle cx="57" cy="146" r="4"/></g>
-      <rect x="82" y="44" width="58" height="30" rx="8" fill="#FFF4F8"/>
-      <path d="M94 59h34" stroke="#E8528A" stroke-width="8" stroke-linecap="round"/>
-      <ellipse cx="96" cy="108" rx="6" ry="8" fill="#3A1F2B"/><ellipse cx="132" cy="108" rx="6" ry="8" fill="#3A1F2B"/>
-      <circle cx="98" cy="105" r="2.4" fill="#fff"/><circle cx="134" cy="105" r="2.4" fill="#fff"/>
-      <ellipse cx="86" cy="124" rx="8" ry="5" fill="#FF5C8A"/><ellipse cx="142" cy="124" rx="8" ry="5" fill="#FF5C8A"/>
-      <path d="M105 122q8 9 16 0" stroke="#3A1F2B" stroke-width="4.5" stroke-linecap="round" fill="none"/>
-      <circle cx="148" cy="150" r="26" fill="#4CC98A" stroke="#fff" stroke-width="6"/>
-      <path d="M136 150l9 9 17-19" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-    </svg>
-    <h1 id="appTitle" role="button" tabindex="0" aria-label="編輯標題">作業繳交記錄</h1>
-  </div>
+  <h1 id="appTitle" role="button" tabindex="0" aria-label="編輯標題">作業繳交記錄</h1>
   <div class="pals" id="pals"><span class="note" id="palName"></span></div>
   <p class="note" id="sync">讀取中…</p>
 
