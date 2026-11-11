@@ -143,7 +143,7 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
   <section id="roster" hidden>
     <div class="panel" id="stuAddPanel">
       <h2 id="stuAddTitle">加入學生</h2>
-      <textarea id="stuList" class="f" placeholder="一行一位，照你貼的順序排列。" aria-label="學生名單"></textarea>
+      <textarea id="stuList" class="f" placeholder="一行一位，加入後會按字母順序排列。" aria-label="學生名單"></textarea>
       <div class="row"><span class="grow"></span><button class="btn primary" id="stuAdd">加入名單</button></div>
     </div>
     <div class="panel" id="stuPanel"></div>
@@ -199,7 +199,7 @@ const ensure = obj => {
 const C = () => classes[cur.c] || null;
 const S = () => { const c = C(); return c ? c.subjects.find(s => s.id === cur.s) || null : null; };
 const H = () => { const s = S(); return s ? s.hw.find(h => h.id === cur.h) || null : null; };
-const students = c => c.students;   // 照加入的順序
+const students = c => [...c.students].sort((a, b) => a.name.localeCompare(b.name, 'en', {sensitivity: 'base'}));   // 按字母順序
 const fmtDue = d => d ? Number(d.slice(5, 7)) + '/' + Number(d.slice(8, 10)) : '';
 /* 期限只選月和日；年份自動取離今天最近的那一年，用來判斷過期了沒 */
 function fillMD(m, d, value){
