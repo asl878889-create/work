@@ -208,7 +208,6 @@ let classes = {};
 let mode = 'loading';              // loading | cloud | local
 let db = null;
 let cur = store.get('hw-cur', {c: null, s: null, h: null});
-let lastBulk = null;               // 最近一次「全部設為準時」，用來取消
 const dirty = new Set(), busy = new Set(), failed = new Set(), timers = {};
 
 const FIXED = ['5A', '6A'];         // 固定兩個班級
@@ -408,11 +407,11 @@ function render(){
       el('div', {className: 'chips'}, ...ST.map(([k, label]) => el('span', {className: 'chip s-' + k, textContent: `${label} ${n[k]}`}))));
     if (!list.length) mp.append(el('div', {className: 'row'}, jump('去加入學生', 'roster')));
     else {
-      const undo = !n.n && lastBulk && lastBulk.h === h.id;
-      const all = el('button', {className: 'btn', textContent: undo ? '全部設為未交' : `未交的 ${n.n} 位全部設為準時`, disabled: !n.n && !undo});
+      const clear = !n.n;                // 全部都交了就變成「全部設為未交」
+      const all = el('button', {className: 'btn', textContent: clear ? '全部設為未交' : `未交的 ${n.n} 位全部設為準時`});
       all.onclick = () => {
-        if (undo){ lastBulk.ids.forEach(id => { if (h.rec[id] === 'o') delete h.rec[id]; }); lastBulk = null; }
-        else { const ids = list.filter(st => !h.rec[st.id]).map(st => st.id); ids.forEach(id => { h.rec[id] = 'o'; }); lastBulk = {h: h.id, ids}; }
+        if (clear) list.forEach(st => { delete h.rec[st.id]; });
+        else list.forEach(st => { if (!h.rec[st.id]) h.rec[st.id] = 'o'; });
         touch(cur.c);
       };
       const box = el('div');
