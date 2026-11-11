@@ -363,6 +363,7 @@ function render(){
   if (!C()) cur.c = ids[0] || null;
   const c = C();
   if (c && !S()) cur.s = c.subjects[0] ? c.subjects[0].id : null;
+  if (c && !c.subjects.some(x => x.id === cur.v)) cur.v = cur.s;      // v：總覽頁自己選的科目，和登記頁分開
   const s = S();
   if (s && !H()) cur.h = s.hw.length ? s.hw[s.hw.length - 1].id : null;
   const h = s ? H() : null;
@@ -370,12 +371,13 @@ function render(){
 
   $('classSel').replaceChildren(...ids.map(id => {
     const b = el('button', {textContent: id}); b.setAttribute('aria-pressed', id === cur.c);
-    b.onclick = () => { cur = {c: id, s: null, h: null}; render(); };
+    b.onclick = () => { cur = {c: id, s: null, v: cur.v, h: null}; render(); };
     return b;
   }));
   ['subjSel', 'subjSel2'].forEach(id => $(id).replaceChildren(...(c ? c.subjects : []).map(x => {
-    const b = el('button', {textContent: x.name}); b.setAttribute('aria-pressed', x.id === cur.s);
-    b.onclick = () => { cur.s = x.id; cur.h = null; render(); };
+    const k = id === 'subjSel' ? 's' : 'v';
+    const b = el('button', {textContent: x.name}); b.setAttribute('aria-pressed', x.id === cur[k]);
+    b.onclick = () => { cur[k] = x.id; if (k === 's') cur.h = null; render(); };
     return b;
   })));
 
@@ -470,24 +472,25 @@ function render(){
   }
 
   /* 總覽 */
+  const sv = c ? c.subjects.find(x => x.id === cur.v) : null;
   const ap = $('allPanel'); ap.replaceChildren();
-  if (!s || !s.hw.length || !c.students.length) ap.append(hint('還沒有資料。'));
+  if (!sv || !sv.hw.length || !c.students.length) ap.append(hint('還沒有資料。'));
   else {
     const head = el('tr', {}, el('th', {className: 'stu', textContent: '學生'}), el('th', {textContent: '缺交'}));
-    s.hw.forEach(x => {
+    sv.hw.forEach(x => {
       const b = el('button', {className: 'hwh'}, x.title, el('small', {textContent: fmtDue(x.due) || '—'}));
-      b.onclick = () => { cur.h = x.id; render(); showTab('mark'); };
+      b.onclick = () => { cur.s = sv.id; cur.h = x.id; render(); showTab('mark'); };
       head.append(el('th', {}, b));
     });
     const body = el('tbody');
     students(c).forEach(st => {
-      const miss = s.hw.filter(x => !x.rec[st.id]).length;
+      const miss = sv.hw.filter(x => !x.rec[st.id]).length;
       const tr = el('tr', {}, el('th', {className: 'stu', textContent: st.name}),
         el('td', {className: 'miss', textContent: miss || ''}));
-      s.hw.forEach(x => { const k = x.rec[st.id] || 'n'; tr.append(el('td', {}, el('span', {className: 'cell s-' + k, textContent: ST.find(t => t[0] === k)[2]}))); });
+      sv.hw.forEach(x => { const k = x.rec[st.id] || 'n'; tr.append(el('td', {}, el('span', {className: 'cell s-' + k, textContent: ST.find(t => t[0] === k)[2]}))); });
       body.append(tr);
     });
-    ap.append(el('h2', {textContent: `${c.name}・${s.name}`}), el('div', {className: 'scroll'}, el('table', {}, el('thead', {}, head), body)));
+    ap.append(el('h2', {textContent: `${c.name}・${sv.name}`}), el('div', {className: 'scroll'}, el('table', {}, el('thead', {}, head), body)));
   }
 
   /* 名單 */
