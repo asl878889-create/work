@@ -485,7 +485,6 @@ function render(){
   {
     $('stuAddTitle').textContent = '加入學生到 ' + c.name;
     sp.append(el('h2', {textContent: `${c.name} 共 ${c.students.length} 位`}));
-    if (!c.students.length) 
     students(c).forEach(st => {
       const b = el('button', {className: 'x', textContent: '編輯'});
       b.onclick = () => openEdit({
