@@ -86,7 +86,6 @@ section{display:flex;flex-direction:column;gap:14px}
 .srow .chips{gap:4px}
 .srow .mchip{padding:1px 9px;font-size:13px}
 .mrow2{display:flex;flex-wrap:wrap;gap:0 8px;align-items:baseline;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:16px;padding:6px 12px;text-align:left;width:100%;font-size:15px}
-.mrow2.over{background:var(--no-bg);color:var(--no-fg);border-color:transparent}
 .mrow2 .mt{font-weight:700}
 .mrow2 .mn{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:700}
 .mrow2 .ms{flex-basis:100%;font-size:13px;opacity:.85;overflow-wrap:anywhere}
@@ -96,7 +95,6 @@ section{display:flex;flex-direction:column;gap:14px}
 .mhead b{font-size:17px}
 .mcount{font-variant-numeric:tabular-nums;font-weight:700;color:var(--no-fg)}
 .mchip{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:4px 12px;font-size:14px;font-weight:500;text-align:left}
-.mchip.over{background:var(--no-bg);color:var(--no-fg);border-color:transparent}
 .mchip small{font-weight:400;opacity:.85}
 .okline{color:var(--ok-fg);background:var(--ok-bg);border-radius:14px;padding:6px 12px;font-weight:500;font-size:14px}
 .chip{border-radius:999px;padding:3px 12px;font-size:14px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -235,7 +233,7 @@ const ensure = obj => {
 const subj = (cid, sid) => (classes[cid] && classes[cid].subjects.find(x => x.id === sid)) || null;
 const students = c => [...c.students].sort((a, b) => a.name.localeCompare(b.name, 'en', {sensitivity: 'base'}));   // 按字母順序
 const fmtDue = d => d ? Number(d.slice(5, 7)) + '/' + Number(d.slice(8, 10)) : '';
-/* 期限只選月和日；年份自動取離今天最近的那一年，用來判斷過期了沒 */
+/* 期限只選月和日；年份自動取離今天最近的那一年 */
 function fillMD(m, d, value){
   m.replaceChildren(el('option', {value: '', textContent: '月'}), ...Array.from({length: 12}, (_, i) => el('option', {value: i + 1, textContent: (i + 1) + ' 月'})));
   d.replaceChildren(el('option', {value: '', textContent: '日'}), ...Array.from({length: 31}, (_, i) => el('option', {value: i + 1, textContent: (i + 1) + ' 日'})));
@@ -393,7 +391,6 @@ function draw(){
 
   /* 登記：兩個班級一起，各自選作業 */
   const mp = $('markPanel'); mp.replaceChildren();
-  const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   FIXED.forEach(cid => {
     const k = classes[cid], s = subj(cid, cur.s); if (!k || !s) return;
     const key = cid + '/' + s.id;
@@ -416,7 +413,7 @@ function draw(){
       });
       const n = {o: 0, c: 0, n: 0};
       list.forEach(st => n[h.rec[st.id] || 'n']++);
-      const dueText = !h.due ? '沒有設定期限' : '期限 ' + fmtDue(h.due) + (h.due < today ? '（已過）' : h.due === today ? '（今天）' : '');
+      const dueText = !h.due ? '沒有設定期限' : '期限 ' + fmtDue(h.due);
       sec.append(el('div', {className: 'row'}, sel, edit),
         el('div', {className: 'due', textContent: dueText}),
         el('div', {className: 'chips'}, ...ST.map(([q, label]) => el('span', {className: 'chip s-' + q, textContent: `${label} ${n[q]}`}))));
@@ -448,20 +445,18 @@ function draw(){
 
   /* 缺交：兩個班級、四個科目合在一起看，一位學生一列 */
   const qp = $('missPanel'); qp.replaceChildren();
-  const now = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   FIXED.forEach(cid => {
     const k = classes[cid]; if (!k) return;
     const rows = students(k).map(st => {
       const list = [];
-      k.subjects.forEach(x => x.hw.forEach(y => { if (!y.rec[st.id]) list.push({x, y, over: !!y.due && y.due < now}); }));
-      list.sort((p, q) => (q.over - p.over) || (p.y.due || '9').localeCompare(q.y.due || '9'));
-      return {st, list, over: list.filter(i => i.over).length};
+      k.subjects.forEach(x => x.hw.forEach(y => { if (!y.rec[st.id]) list.push({x, y}); }));
+      list.sort((p, q) => (p.y.due || '9').localeCompare(q.y.due || '9'));
+      return {st, list};
     });
-    const lacking = rows.filter(r => r.list.length).sort((p, q) => (q.over - p.over) || (q.list.length - p.list.length));
+    const lacking = rows.filter(r => r.list.length).sort((p, q) => q.list.length - p.list.length);
     const done = rows.filter(r => !r.list.length);
-    const total = lacking.reduce((n, r) => n + r.list.length, 0), overdue = lacking.reduce((n, r) => n + r.over, 0);
+    const total = lacking.reduce((n, r) => n + r.list.length, 0);
     const head = el('div', {className: 'mhead'}, el('b', {textContent: cid}));
-    if (overdue) head.append(el('span', {className: 'chip s-n', textContent: `過期 ${overdue}`}));
     if (total) head.append(el('span', {className: 'chip', style: 'border:1px solid var(--line)', textContent: `未交 ${total}`}));
     const grp = el('div', {className: 'mgrp'}, head);
     if (!k.students.length) grp.append(el('p', {className: 'note', textContent: '還沒有學生'}));
@@ -472,8 +467,8 @@ function draw(){
     });
     groups.forEach(r => {
       const chips = el('div', {className: 'chips'});
-      r.list.forEach(({x, y, over}) => {
-        const b = el('button', {className: 'mchip' + (over ? ' over' : '')}, `${x.name}・${y.title}`);
+      r.list.forEach(({x, y}) => {
+        const b = el('button', {className: 'mchip'}, `${x.name}・${y.title}`);
         if (y.due) b.append(' ', el('small', {textContent: fmtDue(y.due)}));
         b.onclick = () => { cur.s = x.id; cur.hs[cid + '/' + x.id] = y.id; $('missDlg').close(); render(); jumpMark(cid); };
         chips.append(b);
