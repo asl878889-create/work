@@ -95,6 +95,7 @@ section{display:flex;flex-direction:column;gap:14px}
 .mhead b{font-size:17px}
 .mcount{font-variant-numeric:tabular-nums;font-weight:700;color:var(--no-fg)}
 .mchip{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:4px 12px;font-size:14px;font-weight:500;text-align:left}
+.mchip.fix{background:var(--late-bg);color:var(--late-fg);border-color:transparent}
 .mchip small{font-weight:400;opacity:.85}
 .okline{color:var(--ok-fg);background:var(--ok-bg);border-radius:14px;padding:6px 12px;font-weight:500;font-size:14px}
 .chip{border-radius:999px;padding:3px 12px;font-size:14px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -449,26 +450,27 @@ function draw(){
     const k = classes[cid]; if (!k) return;
     const rows = students(k).map(st => {
       const list = [];
-      k.subjects.forEach(x => x.hw.forEach(y => { if (!y.rec[st.id]) list.push({x, y}); }));
+      k.subjects.forEach(x => x.hw.forEach(y => { const q = y.rec[st.id]; if (!q) list.push({x, y, q: 'n'}); else if (q === 'c') list.push({x, y, q: 'c'}); }));   // 未交和訂正都列出
       list.sort((p, q) => (p.y.due || '9').localeCompare(q.y.due || '9'));
       return {st, list};
     });
     const lacking = rows.filter(r => r.list.length).sort((p, q) => q.list.length - p.list.length);
     const done = rows.filter(r => !r.list.length);
-    const total = lacking.reduce((n, r) => n + r.list.length, 0);
+    const total = lacking.reduce((n, r) => n + r.list.filter(i => i.q === 'n').length, 0), fix = lacking.reduce((n, r) => n + r.list.filter(i => i.q === 'c').length, 0);
     const head = el('div', {className: 'mhead'}, el('b', {textContent: cid}));
     if (total) head.append(el('span', {className: 'chip', style: 'border:1px solid var(--line)', textContent: `未交 ${total}`}));
+    if (fix) head.append(el('span', {className: 'chip s-c', textContent: `訂正 ${fix}`}));
     const grp = el('div', {className: 'mgrp'}, head);
     if (!k.students.length) grp.append(el('p', {className: 'note', textContent: '還沒有學生'}));
     const groups = [];                 // 缺的作業一模一樣的學生併成一列
     lacking.forEach(r => {
-      const sig = r.list.map(i => i.x.id + '/' + i.y.id).join('|'), g = groups.find(q => q.sig === sig);
+      const sig = r.list.map(i => i.x.id + '/' + i.y.id + '/' + i.q).join('|'), g = groups.find(q => q.sig === sig);
       if (g) g.names.push(r.st.name); else groups.push({sig, names: [r.st.name], list: r.list});
     });
     groups.forEach(r => {
       const chips = el('div', {className: 'chips'});
-      r.list.forEach(({x, y}) => {
-        const b = el('button', {className: 'mchip'}, `${x.name}・${y.title}`);
+      r.list.forEach(({x, y, q}) => {
+        const b = el('button', {className: 'mchip' + (q === 'c' ? ' fix' : '')}, `${x.name}・${y.title}`);
         if (y.due) b.append(' ', el('small', {textContent: fmtDue(y.due)}));
         b.onclick = () => { cur.s = x.id; cur.hs[cid + '/' + x.id] = y.id; $('missDlg').close(); render(); jumpMark(cid); };
         chips.append(b);
