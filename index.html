@@ -77,6 +77,7 @@ section{display:flex;flex-direction:column;gap:14px}
 .mhead b{font-size:17px}
 .mcount{font-variant-numeric:tabular-nums;font-weight:700;color:var(--no-fg)}
 .mchip{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:4px 12px;font-size:14px;font-weight:500;text-align:left}
+.mchip.no{background:var(--no-bg);color:var(--no-fg);border-color:transparent}
 .mchip.fix{background:var(--late-bg);color:var(--late-fg);border-color:transparent}
 .mchip small{font-weight:400;opacity:.85}
 .okline{color:var(--ok-fg);background:var(--ok-bg);border-radius:14px;padding:6px 12px;font-weight:500;font-size:14px}
@@ -430,7 +431,7 @@ function draw(){
     const done = rows.filter(r => !r.list.length);
     const total = lacking.reduce((n, r) => n + r.list.filter(i => i.q === 'n').length, 0), fix = lacking.reduce((n, r) => n + r.list.filter(i => i.q === 'c').length, 0);
     const head = el('div', {className: 'mhead'}, el('b', {textContent: cid}));
-    if (total) head.append(el('span', {className: 'chip', style: 'border:1px solid var(--line)', textContent: `未交 ${total}`}));
+    if (total) head.append(el('span', {className: 'chip s-n', textContent: `未交 ${total}`}));
     if (fix) head.append(el('span', {className: 'chip s-c', textContent: `訂正 ${fix}`}));
     const grp = el('div', {className: 'mgrp'}, head);
     if (!k.students.length) grp.append(el('p', {className: 'note', textContent: '還沒有學生'}));
@@ -442,7 +443,7 @@ function draw(){
     groups.forEach(r => {
       const chips = el('div', {className: 'chips'});
       r.list.forEach(({x, y, q}) => {
-        const b = el('button', {className: 'mchip' + (q === 'c' ? ' fix' : '')}, `${x.name}・${y.title}`);
+        const b = el('button', {className: 'mchip ' + (q === 'c' ? 'fix' : 'no')}, `${x.name}・${y.title}`);
         if (y.due) b.append(' ', el('small', {textContent: fmtDue(y.due)}));
         b.onclick = () => { cur.s = x.id; cur.hs[cid + '/' + x.id] = y.id; $('missDlg').close(); render(); jumpMark(cid); };
         chips.append(b);
