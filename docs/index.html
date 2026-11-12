@@ -120,6 +120,15 @@ dialog{border:1px solid var(--line);border-radius:22px;background:var(--surface)
 /* 登記：兩個班級各一段 */
 .sec{display:flex;flex-direction:column;gap:10px}
 .sec+.sec{border-top:1px solid var(--line);padding-top:14px}
+/* 總覽：5A 在左、6A 在右 */
+.allgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 12px}
+.allgrid .sec+.sec{border-top:0;padding-top:0;border-left:1px solid var(--line);padding-left:12px}
+.allgrid table{font-size:13px}
+.allgrid th,.allgrid td{padding:5px 3px}
+.allgrid .scroll{margin-inline:0;padding-inline:0}
+.allgrid .hwh{max-width:5em;min-width:2.6em;font-size:12px}
+.allgrid .cell{min-width:1.8em}
+@media (max-width:330px){.allgrid{grid-template-columns:1fr}.allgrid .sec+.sec{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:14px}}
 #allPanel{display:flex;flex-direction:column;gap:16px}
 #missPanel,#markPanel{display:flex;flex-direction:column;gap:14px}
 .both{display:flex;gap:6px;align-items:center;font-size:15px}
@@ -485,14 +494,15 @@ function draw(){
 
   /* 總覽：兩個班級同時顯示，不用切班 */
   const ap = $('allPanel'); ap.replaceChildren();
-  const card = el('div', {className: 'panel'});      // 兩班放在同一張卡片裡
+  const card = el('div', {className: 'panel'});      // 兩班放在同一張卡片裡，左右並排
+  const grid = el('div', {className: 'allgrid'});
   FIXED.forEach(cid => {
     const k = classes[cid]; if (!k) return;
     const sv = k.subjects.find(x => x.id === cur.v);
     const sec = el('div', {className: 'sec'}, el('h2', {textContent: `${cid}・${sv ? sv.name : ''}`}));
     if (!sv || !sv.hw.length || !k.students.length) sec.append(hint(k.students.length ? '還沒有作業' : '還沒有學生'));
     else {
-      const head = el('tr', {}, el('th', {className: 'stu', textContent: '學生'}), el('th', {textContent: '缺交'}));
+      const head = el('tr', {}, el('th', {className: 'stu', textContent: '學生'}));
       sv.hw.forEach(x => {
         const b = el('button', {className: 'hwh'}, x.title, el('small', {textContent: fmtDue(x.due) || '—'}));
         b.onclick = () => { cur.s = sv.id; cur.hs[cid + '/' + sv.id] = x.id; render(); jumpMark(cid); };
@@ -500,17 +510,15 @@ function draw(){
       });
       const body = el('tbody');
       students(k).forEach(st => {
-        const miss = sv.hw.filter(x => !x.rec[st.id]).length;
-        const tr = el('tr', {}, el('th', {className: 'stu', textContent: st.name}),
-          el('td', {className: 'miss', textContent: miss || ''}));
+        const tr = el('tr', {}, el('th', {className: 'stu', textContent: st.name}));
         sv.hw.forEach(x => { const q = x.rec[st.id] || 'n'; tr.append(el('td', {}, el('span', {className: 'cell s-' + q, textContent: ST.find(t => t[0] === q)[2]}))); });
         body.append(tr);
       });
       sec.append(el('div', {className: 'scroll'}, el('table', {}, el('thead', {}, head), body)));
     }
-    card.append(sec);
+    grid.append(sec);
   });
-  ap.append(card);
+  card.append(grid); ap.append(card);
 
   /* 名單：兩個班級一起 */
   const rw = $('rosterWrap'); rw.replaceChildren();
