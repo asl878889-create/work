@@ -336,6 +336,7 @@ function showTab(name){
   if (!TABS.includes(name)) name = 'mark';
   tabs.forEach(t => t.setAttribute('aria-selected', t.dataset.tab === name));
   TABS.forEach(id => $(id).hidden = id !== name);
+  document.querySelector('.pick').hidden = name === 'all';      // 總覽兩班一起顯示，不需要班級切換
   store.set('hw-tab2', name);
 }
 tabs.forEach(t => t.onclick = () => { showTab(t.dataset.tab); scrollTo(0, 0); });
