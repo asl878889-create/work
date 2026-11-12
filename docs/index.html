@@ -28,27 +28,8 @@ body{margin:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}
   --mk-bg:#DCE9FF; --mk-fg:#1E4C9E; --no-bg:#FFDCDC; --no-fg:#9C1F1F;
   --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
 }
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --bg:#24161D; --surface:#33212A; --fg:#FFE9F0; --muted:#CDA7B7;
-  --line:#4D3341; --accent:#FF8DB4; --accent-fg:#3A0F20; --jade:#BBA4F7; --jade-soft:#3B2F54;
-  --ok-bg:#1C4630; --ok-fg:#AEEBC4; --late-bg:#4F3C0E; --late-fg:#FADB8C;
-  --mk-bg:#1E3660; --mk-fg:#B9D0FF; --no-bg:#5A2226; --no-fg:#FFB9B9; color-scheme:dark } }
-:root[data-theme="dark"]{
-  --bg:#24161D; --surface:#33212A; --fg:#FFE9F0; --muted:#CDA7B7;
-  --line:#4D3341; --accent:#FF8DB4; --accent-fg:#3A0F20; --jade:#BBA4F7; --jade-soft:#3B2F54;
-  --ok-bg:#1C4630; --ok-fg:#AEEBC4; --late-bg:#4F3C0E; --late-fg:#FADB8C;
-  --mk-bg:#1E3660; --mk-fg:#B9D0FF; --no-bg:#5A2226; --no-fg:#FFB9B9; color-scheme:dark }
-/* 自選配色：選了之後不跟隨系統深淺色 */
-:root[data-pal="berry"],:root[data-pal="peach"],:root[data-pal="mint"],:root[data-pal="lav"]{
-  --ok-bg:#DDF3E4; --ok-fg:#17603A; --late-bg:#FFEBC2; --late-fg:#7A4E00;
-  --mk-bg:#DCE9FF; --mk-fg:#1E4C9E; --no-bg:#FFDCDC; --no-fg:#9C1F1F; color-scheme:light}
-:root[data-pal="berry"]{--bg:#FFEFF4;--surface:#FFFFFF;--fg:#4A2B3A;--muted:#8A6074;--line:#F7D0DD;--accent:#E8528A;--accent-fg:#FFFFFF;--jade:#7C5CD0;--jade-soft:#F0E9FF}
-:root[data-pal="peach"]{--bg:#FFF4EA;--surface:#FFFFFF;--fg:#5A3A2E;--muted:#94705F;--line:#F8DCC6;--accent:#E9683F;--accent-fg:#FFFFFF;--jade:#C2496B;--jade-soft:#FFE6D6}
-:root[data-pal="mint"]{--bg:#EAF8F4;--surface:#FFFFFF;--fg:#24443F;--muted:#5E817B;--line:#C9EAE1;--accent:#14937D;--accent-fg:#FFFFFF;--jade:#2F6FC4;--jade-soft:#E0EEFF}
-:root[data-pal="lav"]{--bg:#F3EEFF;--surface:#FFFFFF;--fg:#382B5C;--muted:#7566A0;--line:#DDD2F7;--accent:#8A63E6;--accent-fg:#FFFFFF;--jade:#C73F86;--jade-soft:#FFE6F3}
-:root[data-pal="night"]{--bg:#0B0B0D;--surface:#18171B;--fg:#FFFFFF;--muted:#BCA9B3;--line:#322B30;--accent:#FF8FC0;--accent-fg:#0B0B0D;--jade:#FFB3D4;--jade-soft:#2C1A24;
-  --ok-bg:#1C4630; --ok-fg:#AEEBC4; --late-bg:#4F3C0E; --late-fg:#FADB8C;
-  --mk-bg:#1E3660; --mk-fg:#B9D0FF; --no-bg:#5A2226; --no-fg:#FFB9B9; color-scheme:dark}
+/* 主題固定為草莓牛奶（淺色） */
+:root{color-scheme:light}
 
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.6}
@@ -63,9 +44,6 @@ h2{font-size:15px;margin:0;color:var(--muted);font-weight:500}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-.pals{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.pal{width:30px;height:30px;border-radius:50%;border:2px solid var(--line);padding:0;flex:none}
-.pal[aria-pressed="true"]{outline:3px solid var(--accent);outline-offset:2px}
 .note{font-size:13px;color:var(--muted);margin:0}
 .note.warn{color:var(--no-fg);font-size:12px}
 .pick{display:block}
@@ -157,7 +135,6 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
 <body>
 <div class="wrap">
   <h1 id="appTitle" role="button" tabindex="0" aria-label="編輯標題">作業繳交記錄</h1>
-  <div class="pals" id="pals"><span class="note" id="palName"></span></div>
   <p class="note" id="sync">讀取中…</p>
 
   <div class="bar">
@@ -361,22 +338,6 @@ function showTab(name){
   store.set('hw-tab2', name);
 }
 tabs.forEach(t => t.onclick = () => { showTab(t.dataset.tab); scrollTo(0, 0); });
-
-const PALS = [['berry','草莓牛奶','#FFEFF4','#E8528A'],['peach','蜜桃奶油','#FFF4EA','#E9683F'],['mint','薄荷蘇打','#EAF8F4','#14937D'],['lav','薰衣草','#F3EEFF','#8A63E6'],['night','夜晚','#0B0B0D','#FF8FC0']];
-function setPal(id){
-  const p = PALS.find(x => x[0] === id);
-  if (p) document.documentElement.dataset.pal = p[0]; else delete document.documentElement.dataset.pal;
-  store.set('hw-pal', p ? p[0] : null);
-  $('palName').textContent = p ? p[1] : '配色';
-  document.querySelectorAll('.pal').forEach(b => b.setAttribute('aria-pressed', !!p && b.dataset.pal === p[0]));
-}
-PALS.forEach(([id, name, a, b]) => {
-  const btn = el('button', {className: 'pal', title: name});
-  btn.dataset.pal = id; btn.setAttribute('aria-label', '配色：' + name);
-  btn.style.background = `linear-gradient(135deg, ${a} 50%, ${b} 50%)`;
-  btn.onclick = () => setPal(document.documentElement.dataset.pal === id ? null : id);
-  $('pals').insertBefore(btn, $('palName'));
-});
 
 /* ---------- 編輯視窗（改名、改期限、刪除） ---------- */
 let dlgSave = null, dlgDelete = null, delArmed = false;
@@ -618,7 +579,6 @@ drawTitle();
 
 const dueToday = () => { const n = new Date(); $('hwM').value = n.getMonth() + 1; $('hwD').value = n.getDate(); };   // 期限預設今天
 fillMD($('hwM'), $('hwD'), ''); dueToday();
-setPal(store.get('hw-pal', null));
 showTab(store.get('hw-tab2', 'mark'));
 $('fab').onclick = () => $('missDlg').showModal();
 $('missClose').onclick = () => $('missDlg').close();
