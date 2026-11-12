@@ -25,7 +25,7 @@ body{margin:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}
   --bg:#FFEFF4; --surface:#FFFFFF; --fg:#4A2B3A; --muted:#8A6074;
   --line:#F7D0DD; --accent:#E8528A; --accent-fg:#FFFFFF; --jade:#7C5CD0; --jade-soft:#F0E9FF;
   --ok-bg:#DDF3E4; --ok-fg:#17603A; --late-bg:#FFEBC2; --late-fg:#7A4E00;
-  --mk-bg:#DCE9FF; --mk-fg:#1E4C9E; --no-bg:#FFDCDC; --no-fg:#9C1F1F;
+  --no-bg:#FFDCDC; --no-fg:#9C1F1F;
   --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
 }
 /* 主題固定為草莓牛奶（淺色） */
@@ -76,8 +76,7 @@ section{display:flex;flex-direction:column;gap:14px}
 .seg{display:flex;gap:3px;flex:none}
 .seg button{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:6px 8px;font-size:13px;font-weight:500;white-space:nowrap}
 .s-o,.seg button[data-s="o"][aria-pressed="true"]{background:var(--ok-bg);color:var(--ok-fg);border-color:transparent}
-.s-l,.seg button[data-s="l"][aria-pressed="true"]{background:var(--late-bg);color:var(--late-fg);border-color:transparent}
-.s-m,.seg button[data-s="m"][aria-pressed="true"]{background:var(--mk-bg);color:var(--mk-fg);border-color:transparent}
+.s-c,.seg button[data-s="c"][aria-pressed="true"]{background:var(--late-bg);color:var(--late-fg);border-color:transparent}
 .s-n,.seg button[data-s="n"][aria-pressed="true"]{background:var(--no-bg);color:var(--no-fg);border-color:transparent}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .mgrp{display:flex;flex-direction:column;gap:6px}
@@ -172,7 +171,7 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
   <section id="all" hidden>
     <div class="cls" id="subjSel2" role="group" aria-label="科目"></div>
     <div class="chips">
-      <span class="chip s-o">準</span><span class="chip s-l">遲</span><span class="chip s-m">補</span><span class="chip s-n">缺</span>
+      <span class="chip s-o">交</span><span class="chip s-c">訂</span><span class="chip s-n">缺</span>
     </div>
     <div id="allPanel"></div>
   </section>
@@ -211,8 +210,8 @@ const store = {
 };
 const uid = () => Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3);
 
-/* 狀態代碼：o 準時、l 遲交、m 補交；沒有記錄就是未交（n） */
-const ST = [['o','準時','準'],['l','遲交','遲'],['m','補交','補'],['n','未交','缺']];
+/* 狀態代碼：o 已交、c 訂正；沒有記錄就是未交（n） */
+const ST = [['o','已交','交'],['c','訂正','訂'],['n','未交','缺']];
 
 /* 資料：每個班級是一筆 { name, order, students:[{id,name}], subjects:[{id,name,hw:[{id,title,due,rec:{學生id:代碼}}]}] } */
 let classes = {};
@@ -229,6 +228,7 @@ const ensure = obj => {
   FIXED.forEach((id, i) => {
     const c = obj[id] || (obj[id] = {name: id, order: i, students: [], subjects: []});
     c.subjects = SUBJ.map(n => c.subjects.find(x => x.id === n) || {id: n, name: n, hw: []});
+    c.subjects.forEach(x => (x.hw || []).forEach(h => { for (const sid in (h.rec || {})) if (h.rec[sid] === 'l' || h.rec[sid] === 'm') h.rec[sid] = 'o'; }));   // 舊的遲交、補交都算已交
   });
   return obj;
 };
@@ -414,7 +414,7 @@ function draw(){
         onSave: v => { h.title = v.title; h.due = v.due; touch(cid); },
         onDelete: () => { s.hw = s.hw.filter(x => x !== h); delete cur.hs[key]; touch(cid); }
       });
-      const n = {o: 0, l: 0, m: 0, n: 0};
+      const n = {o: 0, c: 0, n: 0};
       list.forEach(st => n[h.rec[st.id] || 'n']++);
       const dueText = !h.due ? '沒有設定期限' : '期限 ' + fmtDue(h.due) + (h.due < today ? '（已過）' : h.due === today ? '（今天）' : '');
       sec.append(el('div', {className: 'row'}, sel, edit),
@@ -423,7 +423,7 @@ function draw(){
       if (!list.length) sec.append(hint('還沒有學生'), el('div', {className: 'row'}, jump('去加入學生', 'roster')));
       else {
         const clear = !n.n;                // 全部都交了就變成「全部設為未交」
-        const all = el('button', {className: 'btn', textContent: clear ? '全部設為未交' : '全部設為準時'});
+        const all = el('button', {className: 'btn', textContent: clear ? '全部設為未交' : '全部設為已交'});
         all.onclick = () => {
           if (clear) list.forEach(st => { delete h.rec[st.id]; });
           else list.forEach(st => { if (!h.rec[st.id]) h.rec[st.id] = 'o'; });
