@@ -46,8 +46,6 @@ button{cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .note{font-size:13px;color:var(--muted);margin:0}
 .note.warn{color:var(--no-fg);font-size:12px}
-.pick{display:block}
-.pick label,.pick .lbl{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px;min-width:0}
 .cls{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}
 .cls button{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:6px 0;font-size:16px;font-weight:700}
 .cls button[aria-pressed="true"]{background:var(--jade);color:var(--surface);border-color:var(--jade)}
@@ -65,9 +63,11 @@ section{display:flex;flex-direction:column;gap:14px}
 .btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 .btn.danger{color:var(--no-fg)}
 .btn:disabled{opacity:.5;cursor:default}
-#stuPanel{gap:4px}
-#stuPanel h2{margin-bottom:6px}
-#stuPanel .item{padding:0}
+#rosterWrap{display:flex;flex-direction:column;gap:16px}
+.rosterCard{gap:4px}
+.rosterCard .addrow{margin-bottom:6px}
+
+.rosterCard .item{padding:0}
 .x{border:0;background:none;color:var(--jade);padding:7px 8px;margin-right:-8px;line-height:1.3;font-size:14px;font-weight:500;white-space:nowrap}
 .item{display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
 .item:last-child{border-bottom:0}
@@ -118,9 +118,13 @@ dialog{border:1px solid var(--line);border-radius:22px;background:var(--surface)
   border:0;border-radius:999px;background:var(--accent);color:var(--accent-fg);font-weight:700;font-size:17px;padding:14px 26px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
 #missDlg{width:min(560px,calc(100vw - 24px));max-height:85vh;overflow:auto;padding:14px}
 #missDlg[open]{display:flex;flex-direction:column;gap:12px}
+/* 登記：兩個班級各一段 */
+.sec{display:flex;flex-direction:column;gap:10px}
+.sec+.sec{border-top:1px solid var(--line);padding-top:14px}
 #allPanel{display:flex;flex-direction:column;gap:16px}
 #missPanel,#markPanel{display:flex;flex-direction:column;gap:14px}
-.both{display:flex;gap:6px;align-items:center;font-size:15px;margin-left:auto}
+.both{display:flex;gap:6px;align-items:center;font-size:15px}
+.tos{display:flex;gap:14px;margin-left:auto}
 .both input{width:18px;height:18px;accent-color:var(--jade);flex:none;margin:0}
 #hwAddPanel{gap:8px}
 .panel .cls button,#subjSel2 button{padding:4px 0;font-size:15px}
@@ -139,10 +143,6 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
   <p class="note" id="sync">讀取中…</p>
 
   <div class="bar">
-  <div class="pick">
-    <div class="cls" id="classSel" role="group" aria-label="班級"></div>
-  </div>
-
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" data-tab="mark" aria-selected="true">登記</button>
     <button class="tab" role="tab" data-tab="all" aria-selected="false">總覽</button>
@@ -160,7 +160,7 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
       <div class="row">
         <select id="hwM" class="f" aria-label="期限的月份"></select>
         <select id="hwD" class="f" aria-label="期限的日期"></select>
-        <label class="both"><input type="checkbox" id="hwBoth"><span id="hwBothLbl"></span></label>
+        <span class="tos"><label class="both"><input type="checkbox" id="hwTo5A" checked>5A</label><label class="both"><input type="checkbox" id="hwTo6A" checked>6A</label></span>
       </div>
     </div>
     <div class="panel" id="markCard">
@@ -178,14 +178,7 @@ dialog h2{color:var(--fg);font-size:18px;font-weight:700}
   </section>
 
   <section id="roster" hidden>
-    <div class="panel" id="stuAddPanel">
-      <h2 id="stuAddTitle">加入學生</h2>
-      <div class="row">
-        <textarea id="stuList" class="f grow" rows="1" placeholder="姓名，多位請一行一位" aria-label="學生名單"></textarea>
-        <button class="btn primary" id="stuAdd">加入</button>
-      </div>
-    </div>
-    <div class="panel" id="stuPanel"></div>
+    <div id="rosterWrap"></div>
   </section>
 </div>
 
@@ -225,7 +218,8 @@ const ST = [['o','準時','準'],['l','遲交','遲'],['m','補交','補'],['n',
 let classes = {};
 let mode = 'loading';              // loading | cloud | local
 let db = null;
-let cur = store.get('hw-cur', {c: null, s: null, h: null});
+let cur = Object.assign({s: null, v: null, a: null, hs: {}}, store.get('hw-cur', {}));   // s 登記看哪科、v 總覽看哪科、a 新作業加到哪科、hs 各班各科選中的作業
+const drafts = {};                 // 名單輸入框還沒按加入的文字
 const dirty = new Set(), busy = new Set(), failed = new Set(), timers = {};
 
 const FIXED = ['5A', '6A'];         // 固定兩個班級
@@ -238,9 +232,7 @@ const ensure = obj => {
   });
   return obj;
 };
-const C = () => classes[cur.c] || null;
-const S = () => { const c = C(); return c ? c.subjects.find(s => s.id === cur.s) || null : null; };
-const H = () => { const s = S(); return s ? s.hw.find(h => h.id === cur.h) || null : null; };
+const subj = (cid, sid) => (classes[cid] && classes[cid].subjects.find(x => x.id === sid)) || null;
 const students = c => [...c.students].sort((a, b) => a.name.localeCompare(b.name, 'en', {sensitivity: 'base'}));   // 按字母順序
 const fmtDue = d => d ? Number(d.slice(5, 7)) + '/' + Number(d.slice(8, 10)) : '';
 /* 期限只選月和日；年份自動取離今天最近的那一年，用來判斷過期了沒 */
@@ -336,7 +328,6 @@ function showTab(name){
   if (!TABS.includes(name)) name = 'mark';
   tabs.forEach(t => t.setAttribute('aria-selected', t.dataset.tab === name));
   TABS.forEach(id => $(id).hidden = id !== name);
-  document.querySelector('.pick').hidden = name === 'all';      // 總覽兩班一起顯示，不需要班級切換
   store.set('hw-tab2', name);
 }
 tabs.forEach(t => t.onclick = () => { showTab(t.dataset.tab); scrollTo(0, 0); });
@@ -379,87 +370,81 @@ function render(){
   if (f){ const e = document.getElementById(f); if (e && e !== document.activeElement) e.focus({preventScroll: true}); }
 }
 /* 從總覽或缺交清單跳到登記：直接把作業卡片捲到固定列下面 */
-function jumpMark(){
+function jumpMark(cid){
   showTab('mark');
-  const bar = document.querySelector('.bar'), card = $('markCard');
-  scrollTo(0, Math.max(0, card.getBoundingClientRect().top + scrollY - bar.offsetHeight - 8));
+  const bar = document.querySelector('.bar'), sec = $('sec-' + cid) || $('markCard');
+  scrollTo(0, Math.max(0, sec.getBoundingClientRect().top + scrollY - bar.offsetHeight - 8));
 }
+/* 從總覽或缺交清單跳到登記：直接把那個班的區塊捲到固定列下面 */
 function draw(){
   if (mode === 'loading') return;
-  const ids = clsIds();
-  if (!C()) cur.c = ids[0] || null;
-  const c = C();
-  if (c && !S()) cur.s = c.subjects[0] ? c.subjects[0].id : null;
-  if (c && !c.subjects.some(x => x.id === cur.v)) cur.v = cur.s;      // v：總覽頁自己選的科目
-  if (c && !c.subjects.some(x => x.id === cur.a)) cur.a = cur.s;      // a：出新作業要加到哪一科（和下面列表的科目 s 分開）
-  const s = S();
-  if (s && !H()) cur.h = s.hw.length ? s.hw[s.hw.length - 1].id : null;
-  const h = s ? H() : null;
+  if (!SUBJ.includes(cur.s)) cur.s = SUBJ[0];
+  if (!SUBJ.includes(cur.v)) cur.v = cur.s;
+  if (!SUBJ.includes(cur.a)) cur.a = cur.s;
+  if (!cur.hs || typeof cur.hs !== 'object') cur.hs = {};
   store.set('hw-cur', cur);
 
-  $('classSel').replaceChildren(...ids.map(id => {
-    const b = el('button', {textContent: id}); b.setAttribute('aria-pressed', id === cur.c);
-    b.onclick = () => { cur = {c: id, s: null, v: cur.v, a: cur.a, h: null}; render(); };
-    return b;
-  }));
-  ['subjSel', 'subjSel2', 'subjSel3'].forEach(id => $(id).replaceChildren(...(c ? c.subjects : []).map(x => {
+  ['subjSel', 'subjSel2', 'subjSel3'].forEach(id => $(id).replaceChildren(...SUBJ.map(n => {
     const k = id === 'subjSel' ? 'a' : id === 'subjSel2' ? 'v' : 's';
-    const b = el('button', {textContent: x.name}); b.setAttribute('aria-pressed', x.id === cur[k]);
-    b.onclick = () => { cur[k] = x.id; if (k === 's') cur.h = null; render(); };
+    const b = el('button', {textContent: n}); b.setAttribute('aria-pressed', n === cur[k]);
+    b.onclick = () => { cur[k] = n; render(); };
     return b;
   })));
 
-  /* 登記 */
-  $('hwAddPanel').hidden = !s;
-  $('hwBothLbl').textContent = '同時加到 ' + FIXED.find(id => id !== cur.c);
+  /* 登記：兩個班級一起，各自選作業 */
   const mp = $('markPanel'); mp.replaceChildren();
-  if (!c) return;
-  if (!s) return;
-  if (!h) mp.append(el('h2', {textContent: '還沒有作業'}), hint('在上面加入第一份作業。'));
-  else {
-    const list = students(c);
-    const sel = el('select', {className: 'f grow', id: 'hwSel'});
-    sel.setAttribute('aria-label', '選擇作業');
-    [...s.hw].reverse().forEach(x => sel.append(el('option', {value: x.id, textContent: (x.due ? fmtDue(x.due) + '　' : '') + x.title})));
-    sel.value = h.id; sel.onchange = () => { cur.h = sel.value; render(); };
-    const edit = el('button', {className: 'btn', textContent: '編輯'});
-    edit.onclick = () => openEdit({
-      title: '編輯作業',
-      fields: [{key: 'title', label: '作業名稱', value: h.title}, {key: 'due', label: '繳交期限（可不填）', type: 'md', value: h.due}],
-      note: `會刪除「${h.title}」和全班這份作業的繳交記錄。`,
-      onSave: v => { h.title = v.title; h.due = v.due; touch(cur.c); },
-      onDelete: () => { s.hw = s.hw.filter(x => x !== h); cur.h = null; touch(cur.c); }
-    });
-    const n = {o: 0, l: 0, m: 0, n: 0};
-    list.forEach(st => n[h.rec[st.id] || 'n']++);
-    const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
-    const dueText = !h.due ? '沒有設定期限' : '期限 ' + fmtDue(h.due) + (h.due < today ? '（已過）' : h.due === today ? '（今天）' : '');
-    mp.append(el('div', {className: 'row'}, sel, edit),
-      el('div', {className: 'due', textContent: dueText}),
-      el('div', {className: 'chips'}, ...ST.map(([k, label]) => el('span', {className: 'chip s-' + k, textContent: `${label} ${n[k]}`}))));
-    if (!list.length) mp.append(el('div', {className: 'row'}, jump('去加入學生', 'roster')));
+  const today = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  FIXED.forEach(cid => {
+    const k = classes[cid], s = subj(cid, cur.s); if (!k || !s) return;
+    const key = cid + '/' + s.id;
+    const h = s.hw.find(x => x.id === cur.hs[key]) || s.hw[s.hw.length - 1] || null;
+    const sec = el('div', {className: 'sec', id: 'sec-' + cid}, el('div', {className: 'mhead'}, el('b', {textContent: cid})));
+    if (!h) sec.append(hint('還沒有作業'));
     else {
-      const clear = !n.n;                // 全部都交了就變成「全部設為未交」
-      const all = el('button', {className: 'btn', textContent: clear ? '全部設為未交' : '全部設為準時'});
-      all.onclick = () => {
-        if (clear) list.forEach(st => { delete h.rec[st.id]; });
-        else list.forEach(st => { if (!h.rec[st.id]) h.rec[st.id] = 'o'; });
-        touch(cur.c);
-      };
-      const box = el('div');
-      list.forEach(st => {
-        const now = h.rec[st.id] || 'n';
-        const seg = el('div', {className: 'seg'});
-        ST.forEach(([k, label]) => {
-          const b = el('button', {textContent: label}); b.dataset.s = k; b.setAttribute('aria-pressed', now === k);
-          b.onclick = () => { if (k === 'n') delete h.rec[st.id]; else h.rec[st.id] = k; touch(cur.c); };
-          seg.append(b);
-        });
-        box.append(el('div', {className: 'item'}, el('span', {className: 'name', textContent: st.name}), seg));
+      const list = students(k);
+      const sel = el('select', {className: 'f grow', id: 'hwSel-' + cid});
+      sel.setAttribute('aria-label', cid + ' 選擇作業');
+      [...s.hw].reverse().forEach(x => sel.append(el('option', {value: x.id, textContent: (x.due ? fmtDue(x.due) + '　' : '') + x.title})));
+      sel.value = h.id; sel.onchange = () => { cur.hs[key] = sel.value; render(); };
+      const edit = el('button', {className: 'btn', textContent: '編輯'});
+      edit.onclick = () => openEdit({
+        title: `編輯作業（${cid}）`,
+        fields: [{key: 'title', label: '作業名稱', value: h.title}, {key: 'due', label: '繳交期限（可不填）', type: 'md', value: h.due}],
+        note: `會刪除「${h.title}」和${cid}這份作業的繳交記錄。`,
+        onSave: v => { h.title = v.title; h.due = v.due; touch(cid); },
+        onDelete: () => { s.hw = s.hw.filter(x => x !== h); delete cur.hs[key]; touch(cid); }
       });
-      mp.append(el('div', {className: 'row'}, all), box);
+      const n = {o: 0, l: 0, m: 0, n: 0};
+      list.forEach(st => n[h.rec[st.id] || 'n']++);
+      const dueText = !h.due ? '沒有設定期限' : '期限 ' + fmtDue(h.due) + (h.due < today ? '（已過）' : h.due === today ? '（今天）' : '');
+      sec.append(el('div', {className: 'row'}, sel, edit),
+        el('div', {className: 'due', textContent: dueText}),
+        el('div', {className: 'chips'}, ...ST.map(([q, label]) => el('span', {className: 'chip s-' + q, textContent: `${label} ${n[q]}`}))));
+      if (!list.length) sec.append(hint('還沒有學生'), el('div', {className: 'row'}, jump('去加入學生', 'roster')));
+      else {
+        const clear = !n.n;                // 全部都交了就變成「全部設為未交」
+        const all = el('button', {className: 'btn', textContent: clear ? '全部設為未交' : '全部設為準時'});
+        all.onclick = () => {
+          if (clear) list.forEach(st => { delete h.rec[st.id]; });
+          else list.forEach(st => { if (!h.rec[st.id]) h.rec[st.id] = 'o'; });
+          touch(cid);
+        };
+        const box = el('div');
+        list.forEach(st => {
+          const now = h.rec[st.id] || 'n';
+          const seg = el('div', {className: 'seg'});
+          ST.forEach(([q, label]) => {
+            const b = el('button', {textContent: label}); b.dataset.s = q; b.setAttribute('aria-pressed', now === q);
+            b.onclick = () => { if (q === 'n') delete h.rec[st.id]; else h.rec[st.id] = q; touch(cid); };
+            seg.append(b);
+          });
+          box.append(el('div', {className: 'item'}, el('span', {className: 'name', textContent: st.name}), seg));
+        });
+        sec.append(el('div', {className: 'row'}, all), box);
+      }
     }
-  }
+    mp.append(sec);
+  });
 
   /* 缺交：兩個班級、四個科目合在一起看，一位學生一列 */
   const qp = $('missPanel'); qp.replaceChildren();
@@ -490,7 +475,7 @@ function draw(){
       r.list.forEach(({x, y, over}) => {
         const b = el('button', {className: 'mchip' + (over ? ' over' : '')}, `${x.name}・${y.title}`);
         if (y.due) b.append(' ', el('small', {textContent: fmtDue(y.due)}));
-        b.onclick = () => { cur.c = cid; cur.s = x.id; cur.h = y.id; $('missDlg').close(); render(); jumpMark(); };
+        b.onclick = () => { cur.s = x.id; cur.hs[cid + '/' + x.id] = y.id; $('missDlg').close(); render(); jumpMark(cid); };
         chips.append(b);
       });
       grp.append(el('div', {className: 'srow'}, el('b', {textContent: r.names.join('、')}), chips));
@@ -511,7 +496,7 @@ function draw(){
       const head = el('tr', {}, el('th', {className: 'stu', textContent: '學生'}), el('th', {textContent: '缺交'}));
       sv.hw.forEach(x => {
         const b = el('button', {className: 'hwh'}, x.title, el('small', {textContent: fmtDue(x.due) || '—'}));
-        b.onclick = () => { cur.c = cid; cur.s = sv.id; cur.h = x.id; render(); jumpMark(); };
+        b.onclick = () => { cur.s = sv.id; cur.hs[cid + '/' + sv.id] = x.id; render(); jumpMark(cid); };
         head.append(el('th', {}, b));
       });
       const body = el('tbody');
@@ -527,46 +512,51 @@ function draw(){
     ap.append(card);
   });
 
-  /* 名單 */
-  $('stuAddPanel').hidden = !c;
-  const sp = $('stuPanel'); sp.replaceChildren();
-  {
-    $('stuAddTitle').textContent = '加入學生到 ' + c.name;
-    sp.append(el('h2', {textContent: `${c.name} 共 ${c.students.length} 位`}));
-    students(c).forEach(st => {
+  /* 名單：兩個班級一起 */
+  const rw = $('rosterWrap'); rw.replaceChildren();
+  FIXED.forEach(cid => {
+    const k = classes[cid]; if (!k) return;
+    const ta = el('textarea', {className: 'f grow', rows: 1, id: 'stuList-' + cid, placeholder: '姓名，多位請一行一位', value: drafts[cid] || ''});
+    ta.setAttribute('aria-label', cid + ' 學生名單'); ta.oninput = () => { drafts[cid] = ta.value; };
+    const add = el('button', {className: 'btn primary', textContent: '加入'});
+    add.onclick = () => {
+      const text = ta.value.trim(); if (!text){ ta.focus(); return; }
+      text.split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
+        const m = line.match(/^\d+[\s,，、.．:：]*(\S.*)$/);      // 名單前面若帶號碼就去掉
+        k.students.push({id: 'p' + uid(), name: m ? m[1].trim() : line});
+      });
+      drafts[cid] = ''; touch(cid);
+    };
+    const card = el('div', {className: 'panel rosterCard'}, el('h2', {textContent: `${cid} 共 ${k.students.length} 位`}), el('div', {className: 'row addrow'}, ta, add));
+    students(k).forEach(st => {
       const b = el('button', {className: 'x', textContent: '編輯'});
       b.onclick = () => openEdit({
-        title: '編輯學生',
+        title: `編輯學生（${cid}）`,
         fields: [{key: 'name', label: '姓名', value: st.name}],
-        note: `會刪除「${st.name}」和這位學生在 ${c.name} 所有科目的繳交記錄。`,
-        onSave: v => { st.name = v.name; touch(cur.c); },
-        onDelete: () => { c.students = c.students.filter(x => x !== st); c.subjects.forEach(x => x.hw.forEach(y => delete y.rec[st.id])); touch(cur.c); }
+        note: `會刪除「${st.name}」和這位學生在 ${cid} 所有科目的繳交記錄。`,
+        onSave: v => { st.name = v.name; touch(cid); },
+        onDelete: () => { k.students = k.students.filter(x => x !== st); k.subjects.forEach(x => x.hw.forEach(y => delete y.rec[st.id])); touch(cid); }
       });
-      sp.append(el('div', {className: 'item'}, el('span', {className: 'name', textContent: st.name}), b));
+      card.append(el('div', {className: 'item'}, el('span', {className: 'name', textContent: st.name}), b));
     });
-  }
+    rw.append(card);
+  });
 }
 
 /* ---------- 操作 ---------- */
 const need = input => { if (!input.value.trim()){ input.focus(); return null; } return input.value.trim(); };
-$('stuAdd').onclick = () => {
-  const c = C(), text = need($('stuList')); if (!c || !text) return;
-  text.split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
-    const m = line.match(/^\d+[\s,，、.．:：]*(\S.*)$/);      // 名單前面若帶號碼就去掉
-    c.students.push({id: 'p' + uid(), name: m ? m[1].trim() : line});
-  });
-  $('stuList').value = ''; touch(cur.c);
-};
 $('hwAdd').onclick = () => {
-  const c = C(), s = c && c.subjects.find(x => x.id === cur.a), title = need($('hwTitle')); if (!s || !title) return;
+  const title = need($('hwTitle')); if (!title) return;
+  const targets = FIXED.filter(id => $('hwTo' + id).checked && subj(id, cur.a));
+  if (!targets.length) return;
   const due = mdValue($('hwM'), $('hwD'));
-  const h = {id: 'h' + uid(), title, due, rec: {}}; s.hw.push(h);
-  if ($('hwBoth').checked){            // 同一科也加到另一班
-    const oid = FIXED.find(id => id !== cur.c), os = classes[oid] && classes[oid].subjects.find(x => x.id === s.id);
-    if (os){ os.hw.push({id: 'h' + uid(), title, due, rec: {}}); touch(oid); }
-  }
-  if (cur.s === s.id) cur.h = h.id;     // 只有列表正在看同一科時才跳到新作業
-  $('hwTitle').value = ''; dueToday(); touch(cur.c);
+  targets.forEach(cid => {            // 勾選的班級各加一份
+    const h = {id: 'h' + uid(), title, due, rec: {}};
+    subj(cid, cur.a).hw.push(h);
+    if (cur.s === cur.a) cur.hs[cid + '/' + cur.a] = h.id;      // 列表正在看同一科時，直接選到新作業
+  });
+  $('hwTitle').value = ''; dueToday();
+  targets.forEach(touch);
 };
 [['hwTitle','hwAdd']].forEach(([i, b]) => $(i).addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) $(b).click(); }));
 
