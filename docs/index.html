@@ -485,11 +485,12 @@ function draw(){
 
   /* 總覽：兩個班級同時顯示，不用切班 */
   const ap = $('allPanel'); ap.replaceChildren();
+  const card = el('div', {className: 'panel'});      // 兩班放在同一張卡片裡
   FIXED.forEach(cid => {
     const k = classes[cid]; if (!k) return;
     const sv = k.subjects.find(x => x.id === cur.v);
-    const card = el('div', {className: 'panel'}, el('h2', {textContent: `${cid}・${sv ? sv.name : ''}`}));
-    if (!sv || !sv.hw.length || !k.students.length) card.append(hint(k.students.length ? '還沒有作業' : '還沒有學生'));
+    const sec = el('div', {className: 'sec'}, el('h2', {textContent: `${cid}・${sv ? sv.name : ''}`}));
+    if (!sv || !sv.hw.length || !k.students.length) sec.append(hint(k.students.length ? '還沒有作業' : '還沒有學生'));
     else {
       const head = el('tr', {}, el('th', {className: 'stu', textContent: '學生'}), el('th', {textContent: '缺交'}));
       sv.hw.forEach(x => {
@@ -505,10 +506,11 @@ function draw(){
         sv.hw.forEach(x => { const q = x.rec[st.id] || 'n'; tr.append(el('td', {}, el('span', {className: 'cell s-' + q, textContent: ST.find(t => t[0] === q)[2]}))); });
         body.append(tr);
       });
-      card.append(el('div', {className: 'scroll'}, el('table', {}, el('thead', {}, head), body)));
+      sec.append(el('div', {className: 'scroll'}, el('table', {}, el('thead', {}, head), body)));
     }
-    ap.append(card);
+    card.append(sec);
   });
+  ap.append(card);
 
   /* 名單：兩個班級一起 */
   const rw = $('rosterWrap'); rw.replaceChildren();
